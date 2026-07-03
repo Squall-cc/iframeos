@@ -1,0 +1,16 @@
+todo:
+uhhh
+idk
+more api helpers for mouse movement and stuff
+win32 stuff ported
+createConsolewhatever helper manager for emscripten
+process manager
+documentation
+
+
+hook up scarmjet with fstransport for opening filesystem stuff in browser
+
+
+get and put
+/sw.js, /controller/controller.api.js, /controller/controller.inject.js, /scramjet/scramjet.js, and /scramjet/scramjet.wasm
+in dist after build w/ viteplugin

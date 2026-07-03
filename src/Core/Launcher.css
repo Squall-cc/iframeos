@@ -1,0 +1,16 @@
+#launcher {
+  position: fixed;
+  bottom: 60px;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 60px);
+  grid-template-rows: repeat(3, 60px);
+  background-color: var(--taskbar-bg);
+}
+
+#launcher button {
+  width: 60px;
+  height: 60px;
+  background-color: var(--button-bg);
+  border: none;
+}

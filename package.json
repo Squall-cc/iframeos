@@ -1,0 +1,40 @@
+{
+  "name": "vite-template-solid",
+  "version": "0.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"*.{js,ts,mjs}\"",
+    "//": "taken from https://github.com/solidjs/solid-site/blob/main/package.json",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "lint:staged": "eslint --ext .js,.jsx,.ts,.tsx"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "solid-devtools": "^0.34.5",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.6",
+    "vite-plugin-solid": "^2.11.12"
+  },
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/parser": "^8.62.1",
+    "7.css": "^0.21.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-solid": "^0.14.5",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "libcurl.js": "^0.7.4",
+    "prettier": "^3.9.4",
+    "solid-js": "^1.9.13",
+    "ulid": "^3.0.2"
+  }
+}
