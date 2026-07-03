@@ -3,6 +3,7 @@ import "7.css/dist/gui/window.css";
 import type { ParentComponent } from "solid-js";
 import { createSignal, onMount } from "solid-js";
 
+import { Resizable } from "./resize";
 import { registerWindowElement } from "./windowhelpers";
 
 interface WindowProps {
@@ -20,17 +21,25 @@ const Window: ParentComponent<WindowProps> = (props) => {
   // @ts-ignore
   let windowthingy!: HTMLDivElement; // eslint-disable-line no-unassigned-vars
 
-  let rszisestartX = 0;
-  let rszisestarty = 0;
-  let startwidth = 0;
-  let startheight = 0;
-
   onMount(() => {
     windowthingy.style.left =
       (window.innerWidth - windowthingy.offsetWidth) / 2 + "px";
     windowthingy.style.top =
       (window.innerHeight - windowthingy.offsetHeight) / 2 + "px";
     registerWindowElement(props.hwnd, windowthingy);
+    new Resizable(
+      { container: windowthingy },
+      {
+        top: true,
+        left: true,
+        right: true,
+        bottom: true,
+        topLeft: true,
+        topRight: true,
+        bottomLeft: true,
+        bottomRight: true,
+      },
+    );
   });
 
   return (
@@ -68,18 +77,6 @@ const Window: ParentComponent<WindowProps> = (props) => {
           </div>
         </div>
         <div class="window-body has-space">{props.children}</div>
-        <div
-          id="resizehandle"
-          onMouseDown={(e) => {
-            rszisestartX = e.clientX;
-            rszisestarty = e.clientY;
-            startwidth = windowthingy.offsetWidth;
-            startheight = windowthingy.offsetHeight;
-            document.body.style.userSelect = "none";
-            document.addEventListener("mouseup", resizeUp);
-            document.addEventListener("mousemove", resize);
-          }}
-        />
       </div>
     </>
   );
@@ -96,34 +93,6 @@ const Window: ParentComponent<WindowProps> = (props) => {
     document.removeEventListener("mouseup", up);
     document.body.style.userSelect = "";
     document.removeEventListener("mousemove", move);
-  }
-
-  function resize(e: MouseEvent) {
-    const deltaX = e.clientX - rszisestartX;
-    const deltaY = e.clientY - rszisestarty;
-
-    const newWidth = Math.max(100, startwidth + deltaX);
-    const newHeight = Math.max(100, startheight + deltaY);
-
-    windowthingy.style.width = newWidth + "px";
-    windowthingy.style.height = newHeight + "px";
-
-    // keep window within bounds
-    const maxLeft = window.innerWidth - newWidth;
-    const maxTop = window.innerHeight - newHeight;
-
-    if (windowthingy.offsetLeft > maxLeft) {
-      windowthingy.style.left = Math.max(0, maxLeft) + "px";
-    }
-    if (windowthingy.offsetTop > maxTop) {
-      windowthingy.style.top = Math.max(0, maxTop) + "px";
-    }
-  }
-
-  function resizeUp() {
-    document.removeEventListener("mouseup", resizeUp);
-    document.body.style.userSelect = "";
-    document.removeEventListener("mousemove", resize);
   }
 };
 

@@ -1,6 +1,6 @@
 #launcher {
   position: fixed;
-  bottom: 60px;
+  bottom: var(--panel-size);
   left: 0;
   display: grid;
   grid-template-columns: repeat(2, 60px);

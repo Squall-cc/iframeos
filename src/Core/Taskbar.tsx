@@ -1,10 +1,11 @@
 import "./Taskbar.css";
 
 import type { Component } from "solid-js";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 import Launcher from "./Launcher";
-import { windows, bringupwards } from "./windowhelpers";
+import TaskbarClock from "./TaskbarClock";
+import TaskbarOrb from "./TaskbarOrb";
 
 const Taskbar: Component = () => {
   const [launcherOpen, setLauncherOpen] = createSignal(false);
@@ -15,12 +16,11 @@ const Taskbar: Component = () => {
         <Launcher />
       </Show>
       <div id="taskbar">
-        <button onClick={() => setLauncherOpen(!launcherOpen())}>apps</button>
-        <For each={windows}>
-          {(w) => (
-            <button onClick={() => bringupwards(w.hwnd)}>{w.title}</button>
-          )}
-        </For>
+        <TaskbarOrb onClick={() => setLauncherOpen(!launcherOpen())} />
+        <div class="windows-list" />
+        <div class="tray">
+          <TaskbarClock />
+        </div>
       </div>
     </>
   );

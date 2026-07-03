@@ -1,0 +1,22 @@
+#taskbar-orb {
+  margin: 0 9px;
+  width: var(--panel-size);
+  min-width: var(--panel-size);
+  height: var(--panel-size);
+  background-image: url(../Assets/normal.png);
+  background-position: center;
+  background-size: calc(var(--panel-size) - 1px);
+  background-repeat: no-repeat;
+  filter: brightness(1);
+  transition: filter 0.1s;
+  cursor: pointer;
+}
+
+#taskbar-orb:hover,
+#taskbar-orb:focus {
+  filter: brightness(1.2);
+}
+
+#taskbar-orb:active {
+  filter: brightness(1);
+}

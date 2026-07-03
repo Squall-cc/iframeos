@@ -2,4 +2,4 @@ todo:
 win32 stuff ported
 process manager
 
-win7 bar skid: https://codepen.io/legarth/pen/jrKLqd
+segway font ms/ frutiger whatever

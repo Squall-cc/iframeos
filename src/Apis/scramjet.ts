@@ -15,7 +15,7 @@ function load(x: string): Promise<void> {
   });
 }
 
-// wires an iframe up to scramjet w/ traansport and returns handler 
+// wires an iframe up to scramjet w/ traansport and returns handler
 export async function attachsjFrame(
   iframe: HTMLIFrameElement,
   transport: fstransport | nettransport,

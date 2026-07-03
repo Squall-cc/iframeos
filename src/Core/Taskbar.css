@@ -1,14 +1,41 @@
 #taskbar {
-  position: fixed;
-  bottom: 0;
+  position: absolute;
+  z-index: 9999;
+  display: flex;
+  flex-direction: row;
+  height: var(--panel-size);
+  width: 100%;
   left: 0;
-  right: 0;
-  background-color: var(--taskbar-bg);
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0.8) 0%,
+    rgba(200, 200, 200, 0.9) 4%,
+    rgba(70, 70, 70, 0.4) 5%,
+    rgba(70, 70, 70, 0.4) 100%
+  );
+  backdrop-filter: blur(4px);
 }
 
-#taskbar button {
-  background-color: var(--button-bg);
-  width: 60px;
-  height: 60px;
-  border: none;
+#taskbar .windows-list {
+  flex-grow: 1;
+  display: flex;
+}
+
+#taskbar .tray {
+  width: auto;
+  display: flex;
+  flex-direction: row;
+  min-width: 200px;
+  justify-content: flex-end;
+  background: linear-gradient(
+    270deg,
+    rgba(10, 10, 10, 0.3) 0%,
+    rgba(10, 10, 10, 0.3) 70%,
+    transparent 100%
+  );
+}
+
+#taskbar .tray > * {
+  margin: 0 15px;
 }

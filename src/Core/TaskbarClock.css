@@ -1,0 +1,12 @@
+#taskbar-clock {
+  width: auto;
+  white-space: pre;
+  text-align: center;
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.25;
+  font-size: 15px;
+}

@@ -7,6 +7,7 @@
   /* todo: use 7.css to fix styling*/
   --taskbar-bg: #000000;
   --button-bg: #7fffd4;
+  --panel-size: 40px;
 }
 
 body {
