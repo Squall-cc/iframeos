@@ -14,3 +14,5 @@ hook up scarmjet with fstransport for opening filesystem stuff in browser
 get and put
 /sw.js, /controller/controller.api.js, /controller/controller.inject.js, /scramjet/scramjet.js, and /scramjet/scramjet.wasm
 in dist after build w/ viteplugin
+
+win7 bar skid: https://codepen.io/legarth/pen/jrKLqd
