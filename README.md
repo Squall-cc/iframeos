@@ -18,4 +18,10 @@
 
 https://github.com/KasimAhmic/web-aero/blob/main/src/attributes/resizable.ts is our NEW skidded resizing logic
 
+
+
 https://github.com/nainemom/win7 is where taskbar was skidded from including orb picture
+
+
+
+segway ui font: https://winclassic.net/thread/3325/change-segoe-ui-back-vistas

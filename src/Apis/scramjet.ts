@@ -25,6 +25,9 @@ export async function attachsjFrame(
   const sw = navigator.serviceWorker.controller || reg.active;
   if (!sw) throw new Error("no service worker");
 
+  if (!(window as any).$scramjet) {
+    await load("/scramjet/scramjet.js");
+  }
   await load("/controller/controller.api.js");
   const { Controller, config } = (window as any).$scramjetController;
 

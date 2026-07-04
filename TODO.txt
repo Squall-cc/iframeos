@@ -2,4 +2,5 @@ todo:
 win32 stuff ported
 process manager
 
-segway font ms/ frutiger whatever
+integrate mrrowisp or python wisp server
+setup http server with https://github.com/danyalmh/Dora and look into quic http/3 support

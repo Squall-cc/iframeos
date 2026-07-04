@@ -4,6 +4,7 @@ import "./App.css";
 import * as iSApi from "../Apis/iSApi";
 
 import { setOverlayContext } from "./overlay";
+import { setWisp } from "./systems";
 import Taskbar from "./Taskbar";
 import Window from "./Window";
 import {
@@ -15,6 +16,7 @@ import {
 } from "./windowhelpers";
 
 const App: Component = () => {
+  setWisp("wss://anura.pro/");
   let fsacc = new iSApi.FileSystemAccess();
   let listofthingstocreateonstartup = [
     "/documents",

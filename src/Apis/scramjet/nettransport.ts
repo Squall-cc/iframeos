@@ -6,7 +6,8 @@ let ready: Promise<void> | undefined;
 
 function ensureReady() {
   if (!ready)
-    ready = libcurl.load_wasm().then(() => {
+    // load_wasm() returns undefined cuz bundled, so normalize
+    ready = Promise.resolve(libcurl.load_wasm()).then(() => {
       session = new libcurl.HTTPSession();
     });
   return ready;
