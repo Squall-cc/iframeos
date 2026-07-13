@@ -1,8 +1,12 @@
 //shitty port of pulsar without html
 
+import "./browser.css";
+
 import { attachsjFrame, pref } from "../Apis/scramjet";
 import { nettransport } from "../Apis/scramjet/nettransport";
 import { setContent } from "../Core/windowhelpers";
+
+const sadg = "http://www.w3.org/2000/svg";
 
 function url(raw: string): string {
   try {
@@ -24,25 +28,30 @@ function hist(url: string): void {
 }
 
 function navButton(path: string, onClick: () => void): HTMLButtonElement {
+  const svg = document.createElementNS(sadg, "svg");
+  svg.setAttribute("viewBox", "0 0 512 512");
+  svg.classList.add("browser-icon");
+
+  const pathEl = document.createElementNS(sadg, "path");
+  pathEl.setAttribute("d", path);
+  svg.appendChild(pathEl);
+
   const btn = document.createElement("button");
-  btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="${path}"/></svg>`;
+  btn.classList.add("browser-btn");
+  btn.appendChild(svg);
   btn.onclick = onClick;
   return btn;
 }
 
 export default function run(id: symbol) {
   const container = document.createElement("div");
-  container.style.display = "flex";
-  container.style.flexDirection = "column";
-  container.style.width = "100%";
-  container.style.height = "100%";
+  container.classList.add("browser-app");
 
   const bar = document.createElement("div");
-  bar.style.display = "flex";
+  bar.classList.add("browser-bar");
 
   const iframe = document.createElement("iframe");
-  iframe.style.flex = "1";
-  iframe.style.border = "none";
+  iframe.classList.add("browser-frame");
 
   const back = navButton(
     // copied from fontawesome
@@ -58,7 +67,7 @@ export default function run(id: symbol) {
   const urlInput = document.createElement("input");
   urlInput.type = "text";
   urlInput.placeholder = "URL or search...";
-  urlInput.style.flex = "1";
+  urlInput.classList.add("browser-url");
 
   bar.appendChild(back);
   bar.appendChild(forward);
