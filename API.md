@@ -131,10 +131,19 @@ src/Apis/FileSystemApi.ts
 - `createDirectory(name)` — takes: `string`, returns: `DirectoryHandle`
 - `delete()` — takes: nothing, returns: `void`
 
+### DataStore
+raw blob storage, accessible via `FileSystemAccess.data`. every method that returns a `Blob` has a `...Text`/`readText` string sibling — `Blob`s can't cross the `aspen/eval` bridge (see src/Apis/scramjet/fstransport.ts), since the result gets `JSON.stringify`'d.
+- `read(path)` — takes: `string`, returns: `Promise<Blob | null>`
+- `readText(path)` — takes: `string`, returns: `Promise<string | null>`
+- `write(path, data)` — takes: `string, Blob | string`, returns: `Promise<void>`
+- `delete(path)` — takes: `string`, returns: `Promise<void>`
+- `rename(oldPath, newPath)` — takes: `string, string`, returns: `Promise<void>`
+
 ### FileSystemAccess
 - `exists(path)` — takes: `string`, returns: `boolean`
 - `isFile(path)` — takes: `string`, returns: `boolean`
 - `isDirectory(path)` — takes: `string`, returns: `boolean`
+- `getTimestamps(path)` — takes: `string`, returns: `{ createdAt: number; modifiedAt: number } | null`
 - `createDirectory(path)` — takes: `string`, returns: `void`
 - `deleteDirectory(path)` — takes: `string`, returns: `void`
 - `listDirectory(path)` — takes: `string`, returns: `string[]`
@@ -143,6 +152,8 @@ src/Apis/FileSystemApi.ts
 - `openFile(path)` — takes: `string`, returns: `FileHandle`
 - `updateFileMeta(path, data)` — takes: `string, Blob | string`, returns: `void`
 - `rename(oldPath, newPath)` — takes: `string, string`, returns: `void`
+- `data` — public `DataStore` instance, see above
+- `meta` — public `MetadataStore` instance (internal, undocumented)
 
 ## launcher
 src/Apis/Launcher.ts

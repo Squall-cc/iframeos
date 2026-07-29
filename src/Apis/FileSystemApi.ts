@@ -199,6 +199,11 @@ class DataStore {
     });
   }
 
+  async readText(path: string): Promise<string | null> {
+    const blob = await this.read(path);
+    return blob ? blob.text() : null;
+  }
+
   async delete(path: string): Promise<void> {
     await this.ready;
     const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
@@ -305,6 +310,14 @@ export class FileSystemAccess {
   isDirectory(path: string): boolean {
     const e = this.meta.getEntry(path);
     return !!e && e.type === "dir";
+  }
+
+  getTimestamps(
+    path: string,
+  ): { createdAt: number; modifiedAt: number } | null {
+    const e = this.meta.getEntry(path);
+    if (!e) return null;
+    return { createdAt: e.createdAt, modifiedAt: e.modifiedAt };
   }
 
   createDirectory(path: string): void {
