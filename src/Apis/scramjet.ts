@@ -59,7 +59,7 @@ function spawnf(
 }
 
 export function launchScramFs(path: string = "/"): void {
-  spawnf("scramjet", new fstransport(), `https://filesystem${path}`);
+  spawnf("scramjet", new fstransport(), `https://aspen/filesystem${path}`);
 }
 
 export function launchScramCurl(url: string): void {
