@@ -76,7 +76,7 @@ function scramjetAssetsPlugin(): Plugin {
 export default defineConfig({
   plugins: [devtools(), solidPlugin(), scramjetAssetsPlugin()],
   server: {
-    port: 8081,
+    port: 8080,
   },
   build: {
     target: "esnext",
