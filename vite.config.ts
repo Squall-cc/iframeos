@@ -37,6 +37,10 @@ const SCRAMJET_ASSETS: { url: string; file: string }[] = [
     url: "/controller/controller.inject.js",
     file: "controller/controller.inject.js",
   },
+  {
+    url: "/controller/controller.sw.js",
+    file: "controller/controller.sw.js",
+  },
   { url: "/scramjet/scramjet.js", file: "scramjet/scramjet.js" },
   { url: "/scramjet/scramjet.wasm", file: "scramjet/scramjet.wasm" },
 ];
