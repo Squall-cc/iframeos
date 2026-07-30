@@ -77,6 +77,7 @@ export default defineConfig({
   plugins: [devtools(), solidPlugin(), scramjetAssetsPlugin()],
   server: {
     port: 8080,
+    allowedHosts:true,
   },
   build: {
     target: "esnext",
