@@ -1,6 +1,7 @@
 import { For, Show, onMount, type Component } from "solid-js";
 
 import "./App.css";
+import * as appStore from "../Apis/AppStore";
 import * as iSApi from "../Apis/iSApi";
 
 import { setOverlayContext } from "./overlay";
@@ -16,7 +17,8 @@ import {
 } from "./windowhelpers";
 
 const App: Component = () => {
-  setWisp("wss://anura.pro/");
+  setWisp("wss://squall.cc/wisp/");
+  appStore.installAllApps().catch((e) => console.error("app store sync failed:", e));
   let fsacc = new iSApi.FileSystemAccess();
   let listofthingstocreateonstartup = [
     "/documents",

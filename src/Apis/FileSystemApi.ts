@@ -298,29 +298,30 @@ export class FileSystemAccess {
     this.data = new DataStore();
   }
 
-  exists(path: string): boolean {
-    return this.meta.getEntry(path) !== null;
-  }
 
-  isFile(path: string): boolean {
+  exists = (path: string): boolean => {
+    return this.meta.getEntry(path) !== null;
+  };
+
+  isFile = (path: string): boolean => {
     const e = this.meta.getEntry(path);
     return !!e && e.type === "file";
-  }
+  };
 
-  isDirectory(path: string): boolean {
+  isDirectory = (path: string): boolean => {
     const e = this.meta.getEntry(path);
     return !!e && e.type === "dir";
-  }
+  };
 
-  getTimestamps(
+  getTimestamps = (
     path: string,
-  ): { createdAt: number; modifiedAt: number } | null {
+  ): { createdAt: number; modifiedAt: number } | null => {
     const e = this.meta.getEntry(path);
     if (!e) return null;
     return { createdAt: e.createdAt, modifiedAt: e.modifiedAt };
-  }
+  };
 
-  createDirectory(path: string): void {
+  createDirectory = (path: string): void => {
     const original = normalizePath(path);
     if (this.exists(original)) return;
 
@@ -337,9 +338,9 @@ export class FileSystemAccess {
 
     this.meta.setEntry(entry);
     this.meta.addChild(parentPath, original);
-  }
+  };
 
-  deleteDirectory(path: string): void {
+  deleteDirectory = (path: string): void => {
     const original = normalizePath(path);
     const entry = this.meta.getEntry(original);
     if (!entry || entry.type !== "dir") return;
@@ -352,16 +353,16 @@ export class FileSystemAccess {
     );
     this.meta.removeChild(parent, original);
     this.meta.deleteEntry(original);
-  }
+  };
 
-  listDirectory(path: string): string[] {
+  listDirectory = (path: string): string[] => {
     return this.meta.listChildren(path).map((childLookup) => {
       const entry = this.meta.getEntry(childLookup);
       return entry?.path ?? childLookup;
     });
-  }
+  };
 
-  createFile(path: string): void {
+  createFile = (path: string): void => {
     const original = normalizePath(path);
     if (this.exists(original)) return;
 
@@ -383,9 +384,9 @@ export class FileSystemAccess {
     (async () => {
       await this.data.write(original, new Blob([]));
     })();
-  }
+  };
 
-  deleteFile(path: string): void {
+  deleteFile = (path: string): void => {
     const original = normalizePath(path);
     const entry = this.meta.getEntry(original);
     if (!entry || entry.type !== "file") return;
@@ -398,9 +399,9 @@ export class FileSystemAccess {
     (async () => {
       await this.data.delete(entry.path);
     })();
-  }
+  };
 
-  openFile(path: string): FileHandle {
+  openFile = (path: string): FileHandle => {
     let original = normalizePath(path);
     const entry = this.meta.getEntry(original);
     if (!entry) {
@@ -409,9 +410,9 @@ export class FileSystemAccess {
       original = entry.path;
     }
     return new FileHandle(this, original);
-  }
+  };
 
-  updateFileMeta(path: string, data: Blob | string): void {
+  updateFileMeta = (path: string, data: Blob | string): void => {
     const entry = this.meta.getEntry(path);
     if (!entry || entry.type !== "file") return;
     const size =
@@ -419,9 +420,9 @@ export class FileSystemAccess {
     entry.size = size;
     entry.modifiedAt = Date.now();
     this.meta.setEntry(entry);
-  }
+  };
 
-  rename(oldPath: string, newPath: string): void {
+  rename = (oldPath: string, newPath: string): void => {
     const entry = this.meta.getEntry(oldPath);
     if (!entry) return;
 
@@ -434,5 +435,5 @@ export class FileSystemAccess {
         await this.data.rename(oldDataPath, newDataPath);
       })();
     }
-  }
+  };
 }

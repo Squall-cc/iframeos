@@ -1,6 +1,7 @@
 import { render } from "solid-js/web";
 
 import "solid-devtools";
+import * as appStoreApi from "./Apis/AppStore";
 import * as fileSystemApi from "./Apis/FileSystemApi";
 import { WindowHandle, spawn } from "./Apis/iSApi";
 import * as launcher from "./Apis/Launcher";
@@ -8,6 +9,11 @@ import * as registryApi from "./Apis/RegistryApi";
 import * as scramjetApi from "./Apis/scramjet";
 import App from "./Core/App";
 import * as systems from "./Core/systems";
+import * as editorApi from "./SysApps/editor";
+
+// fix explorer
+const fsInstance = new fileSystemApi.FileSystemAccess();
+const fs = { ...fileSystemApi, ...fsInstance };
 
 declare global {
   interface Window {
@@ -15,9 +21,11 @@ declare global {
       WindowHandle: typeof WindowHandle;
       systems: typeof systems;
       registry: typeof registryApi;
-      fs: typeof fileSystemApi;
+      fs: typeof fileSystemApi & fileSystemApi.FileSystemAccess;
       launcher: typeof launcher;
       scramjet: typeof scramjetApi;
+      appStore: typeof appStoreApi;
+      editor: typeof editorApi;
       version: string;
       spawn: typeof spawn;
     };
@@ -30,9 +38,11 @@ const API = {
   WindowHandle,
   systems,
   registry: registryApi,
-  fs: fileSystemApi,
+  fs,
   launcher,
   scramjet: scramjetApi,
+  appStore: appStoreApi,
+  editor: editorApi,
   version: "1.0.0",
   spawn,
 };
