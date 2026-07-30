@@ -17,7 +17,7 @@ import {
 } from "./windowhelpers";
 
 const App: Component = () => {
-  setWisp("wss://squall.cc/wisp/");
+  setWisp("wss://anura.pro/");
   appStore.installAllApps().catch((e) => console.error("app store sync failed:", e));
   let fsacc = new iSApi.FileSystemAccess();
   let listofthingstocreateonstartup = [
