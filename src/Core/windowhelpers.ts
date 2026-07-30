@@ -10,6 +10,7 @@ interface WindowData {
   title: string;
   z: number; // z index
   minimized: boolean;
+  maximized: boolean;
   content?: JSX.Element;
 }
 let mx = 0;
@@ -126,6 +127,28 @@ export const bringupwards = (hwnd: symbol) =>
   setWindows((w) => w.hwnd === hwnd, { z: ++topZ, minimized: false });
 export const minimize = (hwnd: symbol) =>
   setWindows((w) => w.hwnd === hwnd, "minimized", true);
+
+const preMaximizeState = new Map<symbol, { left: string; top: string; width: string; height: string }>();
+
+export function savePreMaximizeState(hwnd: symbol, state: { left: string; top: string; width: string; height: string }) {
+  if (!preMaximizeState.has(hwnd)) {
+    preMaximizeState.set(hwnd, state);
+  }
+}
+
+export function getPreMaximizeState(hwnd: symbol) {
+  return preMaximizeState.get(hwnd);
+}
+
+export function deletePreMaximizeState(hwnd: symbol) {
+  preMaximizeState.delete(hwnd);
+}
+
+export const toggleMaximize = (hwnd: symbol) => {
+  const w = windows.find((win) => win.hwnd === hwnd);
+  if (!w) return;
+  setWindows((win) => win.hwnd === hwnd, "maximized", !w.maximized);
+};
 export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
   var s = Symbol();
   setWindows(windows.length, {
@@ -133,6 +156,7 @@ export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
     title: title,
     z: ++topZ,
     minimized: false,
+    maximized: false,
   });
   windowsmap.set(s, ulid());
   run?.(s);

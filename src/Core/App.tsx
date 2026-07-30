@@ -13,6 +13,7 @@ import {
   closeWindow,
   minimize,
   bringupwards,
+  toggleMaximize,
   debug123,
 } from "./windowhelpers";
 
@@ -52,6 +53,18 @@ const App: Component = () => {
   ) {
     ("");
   }
+  const activeWindow = () => {
+    let maxZ = -1;
+    let active: symbol | null = null;
+    for (const w of windows) {
+      if (w.z > maxZ && !w.minimized) {
+        maxZ = w.z;
+        active = w.hwnd;
+      }
+    }
+    return active;
+  };
+
   return (
     <>
       <div id="wallpaper" />
@@ -63,8 +76,11 @@ const App: Component = () => {
               hwnd={w.hwnd}
               title={w.title}
               zIndex={w.z}
+              maximized={w.maximized}
+              active={w.hwnd === activeWindow()}
               onclose={() => closeWindow(w.hwnd)}
               onminimize={() => minimize(w.hwnd)}
+              onmaximize={() => toggleMaximize(w.hwnd)}
               onfocus={() => bringupwards(w.hwnd)}
             >
               {w.content}

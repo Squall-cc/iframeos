@@ -5,6 +5,7 @@ import {
   windows,
   closeWindow,
   minimize,
+  toggleMaximize,
   bringupwards,
   setContent,
   getDimensions,
@@ -41,6 +42,10 @@ export class WindowHandle {
 
   bringupwards() {
     bringupwards(this.hwnd);
+  }
+
+  maximize() {
+    toggleMaximize(this.hwnd);
   }
 
   getTitle() {

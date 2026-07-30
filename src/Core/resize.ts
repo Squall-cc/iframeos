@@ -34,7 +34,7 @@ export class Resizable {
           location as ResizeHandleLocation,
         );
 
-        handle.addEventListener("mousedown", (event) =>
+        handle.addEventListener("pointerdown", (event) =>
           this.handleResize(event, location as ResizeHandleLocation),
         );
 
@@ -163,62 +163,88 @@ export class Resizable {
     }
   }
 
-  private handleResize(event: MouseEvent, location: ResizeHandleLocation) {
-    event.preventDefault(); // fix dragging
+  private handleResize(event: PointerEvent, location: ResizeHandleLocation) {
+    event.preventDefault();
+    const el = this.component.container;
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+
     const initialX = event.clientX;
     const initialY = event.clientY;
-    const initialWidth = this.component.container.clientWidth;
-    const initialHeight = this.component.container.clientHeight;
+    const initialLeft = el.offsetLeft;
+    const initialTop = el.offsetTop;
+    const initialWidth = el.clientWidth;
+    const initialHeight = el.clientHeight;
+    const minW = parseFloat(getComputedStyle(el).minWidth) || 0;
+    const minH = parseFloat(getComputedStyle(el).minHeight) || 0;
 
-    const mouseMoveCallback = (event: MouseEvent) => {
+    const pointerMoveCallback = (event: PointerEvent) => {
       const deltaX = event.clientX - initialX;
       const deltaY = event.clientY - initialY;
+      let clampedW: number, clampedH: number;
 
       switch (location) {
         case "top":
-          this.setTop(initialY + deltaY);
-          this.setHeight(initialHeight - deltaY);
+          clampedH = Math.max(minH, initialHeight - deltaY);
+          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          el.style.height = clampedH + "px";
           break;
         case "left":
-          this.setLeft(initialX + deltaX);
-          this.setWidth(initialWidth - deltaX);
+          clampedW = Math.max(minW, initialWidth - deltaX);
+          el.style.left = (initialLeft + initialWidth - clampedW) + "px";
+          el.style.width = clampedW + "px";
           break;
         case "right":
-          this.setWidth(initialWidth + deltaX);
+          clampedW = Math.max(minW, initialWidth + deltaX);
+          el.style.width = clampedW + "px";
           break;
         case "bottom":
-          this.setHeight(initialHeight + deltaY);
+          clampedH = Math.max(minH, initialHeight + deltaY);
+          el.style.height = clampedH + "px";
           break;
         case "topLeft":
-          this.setTop(initialY + deltaY);
-          this.setLeft(initialX + deltaX);
-          this.setWidth(initialWidth - deltaX);
-          this.setHeight(initialHeight - deltaY);
+          clampedW = Math.max(minW, initialWidth - deltaX);
+          clampedH = Math.max(minH, initialHeight - deltaY);
+          el.style.left = (initialLeft + initialWidth - clampedW) + "px";
+          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          el.style.width = clampedW + "px";
+          el.style.height = clampedH + "px";
           break;
         case "topRight":
-          this.setTop(initialY + deltaY);
-          this.setWidth(initialWidth + deltaX);
-          this.setHeight(initialHeight - deltaY);
+          clampedW = Math.max(minW, initialWidth + deltaX);
+          clampedH = Math.max(minH, initialHeight - deltaY);
+          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          el.style.width = clampedW + "px";
+          el.style.height = clampedH + "px";
           break;
         case "bottomLeft":
-          this.setLeft(initialX + deltaX);
-          this.setWidth(initialWidth - deltaX);
-          this.setHeight(initialHeight + deltaY);
+          clampedW = Math.max(minW, initialWidth - deltaX);
+          clampedH = Math.max(minH, initialHeight + deltaY);
+          el.style.left = (initialLeft + initialWidth - clampedW) + "px";
+          el.style.width = clampedW + "px";
+          el.style.height = clampedH + "px";
           break;
         case "bottomRight":
-          this.setWidth(initialWidth + deltaX);
-          this.setHeight(initialHeight + deltaY);
+          clampedW = Math.max(minW, initialWidth + deltaX);
+          clampedH = Math.max(minH, initialHeight + deltaY);
+          el.style.width = clampedW + "px";
+          el.style.height = clampedH + "px";
           break;
       }
     };
 
-    const mouseUpCallback = () => {
-      window.removeEventListener("mousemove", mouseMoveCallback);
-      window.removeEventListener("mouseup", mouseUpCallback);
+    const pointerUpCallback = (e: PointerEvent) => {
+      if (handle.hasPointerCapture(e.pointerId)) {
+        handle.releasePointerCapture(e.pointerId);
+      }
+      handle.removeEventListener("pointermove", pointerMoveCallback);
+      handle.removeEventListener("pointerup", pointerUpCallback);
+      handle.removeEventListener("pointercancel", pointerUpCallback);
     };
 
-    window.addEventListener("mousemove", mouseMoveCallback);
-    window.addEventListener("mouseup", mouseUpCallback);
+    handle.addEventListener("pointermove", pointerMoveCallback);
+    handle.addEventListener("pointerup", pointerUpCallback);
+    handle.addEventListener("pointercancel", pointerUpCallback);
   }
 
   private setWidth(width: number) {

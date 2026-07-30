@@ -13,7 +13,7 @@ const Taskbar: Component = () => {
   return (
     <>
       <Show when={launcherOpen()}>
-        <Launcher />
+        <Launcher onClose={() => setLauncherOpen(false)} />
       </Show>
       <div id="taskbar">
         <TaskbarOrb onClick={() => setLauncherOpen(!launcherOpen())} />
