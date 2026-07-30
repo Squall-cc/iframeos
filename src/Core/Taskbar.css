@@ -20,6 +20,41 @@
 #taskbar .windows-list {
   flex-grow: 1;
   display: flex;
+  gap: 2px;
+  padding: 2px 4px;
+  align-items: stretch;
+}
+
+.taskbar-window {
+  flex: 1;
+  max-width: 200px;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: #fff;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.taskbar-window:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.taskbar-window.active {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.taskbar-window.minimized {
+  opacity: 0.7;
 }
 
 #taskbar .tray {
