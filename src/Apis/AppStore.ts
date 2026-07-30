@@ -19,7 +19,8 @@ const LAUNCHER_REGISTRY_VALUE = "apps";
 
 export type LauncherAppEntry =
   | { type: "builtin"; key: string; name: string }
-  | { type: "appstore"; url: string; name: string };
+  | { type: "appstore"; url: string; name: string }
+  | { type: "spa"; key: string; name: string };
 
 const DEFAULT_BUILTIN_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "hi", name: "hi" },
@@ -27,6 +28,11 @@ const DEFAULT_BUILTIN_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "draw", name: "draw" },
   { type: "builtin", key: "launch", name: "launch" },
   { type: "builtin", key: "browser", name: "browser" },
+  { type: "builtin", key: "editor", name: "Text Editor" },
+  { type: "builtin", key: "registry-editor", name: "Registry Editor" },
+  { type: "builtin", key: "app-installer", name: "App Installer" },
+  { type: "builtin", key: "file-explorer", name: "File Explorer" },
+  { type: "builtin", key: "test-app", name: "Test App" },
 ];
 
 // bypasses RegistryKey's fire-and-forget getValue().value (populated async
@@ -38,7 +44,19 @@ export async function getLauncherApps(): Promise<LauncherAppEntry[]> {
     | LauncherAppEntry[]
     | undefined;
 
-  if (existing) return existing;
+  if (existing) {
+    let changed = false;
+    for (const builtin of DEFAULT_BUILTIN_APPS) {
+      if (!existing.some((a) => a.name === builtin.name)) {
+        existing.push(builtin);
+        changed = true;
+      }
+    }
+    if (changed) {
+      await reg._write(LAUNCHER_REGISTRY_PATH, LAUNCHER_REGISTRY_VALUE, existing);
+    }
+    return existing;
+  }
 
   // first run: seed the registry with the built-in apps
   await reg._write(

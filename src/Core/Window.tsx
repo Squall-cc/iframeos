@@ -16,6 +16,8 @@ interface WindowProps {
   title: string;
   zIndex: number;
   maximized: boolean;
+  minWidth?: number;
+  minHeight?: number;
   active: boolean;
   onclose?: () => void; // react style names are dumb, all my homies adore html
   onminimize?: () => void;
@@ -129,7 +131,11 @@ const Window: ParentComponent<WindowProps> = (props) => {
         id="window"
         class="window glass active"
         ref={windowthingy}
-        style={{ "z-index": props.zIndex }}
+        style={{
+          "z-index": props.zIndex,
+          "min-width": props.minWidth ? props.minWidth + "px" : undefined,
+          "min-height": props.minHeight ? props.minHeight + "px" : undefined,
+        }}
       >
         <div
           class="title-bar"

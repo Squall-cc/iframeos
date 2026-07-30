@@ -4,7 +4,7 @@ import "./browser.css";
 
 import { attachsjFrame, pref } from "../Apis/scramjet";
 import { nettransport } from "../Apis/scramjet/nettransport";
-import { setContent } from "../Core/windowhelpers";
+import { setContent, setMinSize } from "../Core/windowhelpers";
 
 const sadg = "http://www.w3.org/2000/svg";
 
@@ -44,6 +44,7 @@ function navButton(path: string, onClick: () => void): HTMLButtonElement {
 }
 
 export default function run(id: symbol) {
+  setMinSize(id, 500, 350);
   const container = document.createElement("div");
   container.classList.add("browser-app");
 

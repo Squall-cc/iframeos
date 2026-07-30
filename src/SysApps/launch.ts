@@ -1,7 +1,8 @@
 import { launch } from "../Apis/Launcher";
-import { setContent } from "../Core/windowhelpers";
+import { setContent, setMinSize } from "../Core/windowhelpers";
 
 export default function run(hwnd: symbol) {
+  setMinSize(hwnd, 400, 300);
   const container = document.createElement("div");
   container.style.display = "flex";
   container.style.flexDirection = "column";

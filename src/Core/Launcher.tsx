@@ -5,28 +5,51 @@ import { createResource, For, onCleanup, onMount } from "solid-js";
 
 import * as appStore from "../Apis/AppStore";
 import type { LauncherAppEntry } from "../Apis/AppStore";
+import { getAllInstalledApps, launchSpaApp } from "../Apis/iSApi";
+import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
 import draw from "../SysApps/draw";
+import fileExplorer from "../SysApps/file-explorer";
 import hello from "../SysApps/hello";
 import hi from "../SysApps/hi";
 import launch from "../SysApps/launch";
+import registryEditor from "../SysApps/registry-editor";
+import testApp from "../SysApps/test-app";
 
 import { spawn } from "./windowhelpers";
 
-// registry only stores serializable app entries, so builtins are resolved
-// back to their real run functions through this local map
 const builtinApps = new Map([
   ["hi", hi],
   ["hello", hello],
   ["draw", draw],
   ["launch", launch],
   ["browser", browser],
+  ["registry-editor", registryEditor],
+  ["app-installer", appInstaller],
+  ["file-explorer", fileExplorer],
+  ["test-app", testApp],
 ]);
+
+async function getAllApps(): Promise<LauncherAppEntry[]> {
+  const registryApps = await appStore.getLauncherApps();
+  const spaApps = await getAllInstalledApps();
+  for (const spa of spaApps) {
+    if (!registryApps.some((a) => a.type === "spa" && a.key === spa.key)) {
+      registryApps.push({ type: "spa", key: spa.key, name: spa.name });
+    }
+  }
+  return registryApps;
+}
 
 function open(entry: LauncherAppEntry, onClose?: () => void) {
   if (entry.type === "builtin") {
     const run = builtinApps.get(entry.key);
     if (run) spawn(entry.name, run);
+    onClose?.();
+    return;
+  }
+  if (entry.type === "spa") {
+    launchSpaApp(entry.key);
     onClose?.();
     return;
   }
@@ -39,7 +62,7 @@ interface LauncherProps {
 }
 
 const Launcher: Component<LauncherProps> = (props) => {
-  const [apps] = createResource(appStore.getLauncherApps);
+  const [apps] = createResource(getAllApps);
   let launcherRef!: HTMLDivElement;
 
   onMount(() => {

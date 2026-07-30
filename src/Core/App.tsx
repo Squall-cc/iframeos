@@ -3,6 +3,7 @@ import { For, Show, onMount, type Component } from "solid-js";
 import "./App.css";
 import * as appStore from "../Apis/AppStore";
 import * as iSApi from "../Apis/iSApi";
+import { CLASSES_ROOT_PREFIX, APPS_REG_PREFIX } from "../Apis/iSApi";
 
 import { setOverlayContext } from "./overlay";
 import { setWisp } from "./systems";
@@ -17,6 +18,19 @@ import {
   debug123,
 } from "./windowhelpers";
 
+const BUILTIN_APPS = [
+  { key: "hi", name: "hi", description: "Example iframe app" },
+  { key: "hello", name: "hello", description: "Canvas hello world" },
+  { key: "draw", name: "draw", description: "Pointer painting app" },
+  { key: "launch", name: "launch", description: "Code runner" },
+  { key: "browser", name: "browser", description: "Web browser" },
+  { key: "editor", name: "Text Editor", description: "Built-in text editor", hasFileOpener: true },
+  { key: "registry-editor", name: "Registry Editor", description: "Registry editor" },
+  { key: "app-installer", name: "App Installer", description: "Install .spa apps" },
+  { key: "file-explorer", name: "File Explorer", description: "Browse files" },
+  { key: "test-app", name: "Test App", description: "Tests all features" },
+];
+
 const App: Component = () => {
   setWisp("wss://anura.pro/");
   appStore.installAllApps().catch((e) => console.error("app store sync failed:", e));
@@ -26,16 +40,55 @@ const App: Component = () => {
     "/downloads",
     "/iSi",
     "/iSi/theming",
+    "/iSi/apps",
     "/pictures",
     "/videos",
     "/3dobjects",
   ];
 
-  listofthingstocreateonstartup.forEach((v, i) => {
-    if (!fsacc.exists(v)) {
-      fsacc.createDirectory(v);
+  listofthingstocreateonstartup.forEach((dir) => {
+    if (!fsacc.exists(dir)) {
+      fsacc.createDirectory(dir);
     }
   });
+
+  const reg = new iSApi.RegistryInstanceAccess();
+
+  reg._load(`${CLASSES_ROOT_PREFIX}/.txt`).then((existing) => {
+    if (!existing) {
+      reg._write(`${CLASSES_ROOT_PREFIX}/.txt`, "app", "editor");
+      reg._write(`${CLASSES_ROOT_PREFIX}/.txt`, "entry", "editFile");
+    }
+  });
+  reg._load(`${CLASSES_ROOT_PREFIX}/.test`).then((existing) => {
+    if (!existing) {
+      reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "app", "test-app");
+      reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "entry", "run");
+    }
+  });
+
+  for (const app of BUILTIN_APPS) {
+    const path = `${APPS_REG_PREFIX}/${app.key}`;
+    reg._load(path).then((existing) => {
+      if (!existing) {
+        reg._write(path, "manifest", {
+          name: app.name,
+          key: app.key,
+          version: "1.0.0",
+          description: app.description,
+          type: "builtin",
+          hasFileOpener: !!app.hasFileOpener,
+        });
+      }
+    });
+  }
+
+  reg._load("InternalSystem/AppIndex").then((existing) => {
+    if (!existing) {
+      reg._write("InternalSystem/AppIndex", "list", []);
+    }
+  });
+
   let overlay!: HTMLCanvasElement;
 
   onMount(() => {
@@ -46,12 +99,6 @@ const App: Component = () => {
   let db = new iSApi.RegistryInstanceAccess();
   if (!db.getKey("InternalSystem/Settings/ctheme").getValue("curbkg").value) {
     db.getKey("InternalSystem/Settings/ctheme").setValue("curbkg", "default0");
-  }
-  if (
-    db.getKey("InternalSystem/Settings/ctheme").getValue("curbkg").value ==
-    "default0"
-  ) {
-    ("");
   }
   const activeWindow = () => {
     let maxZ = -1;
@@ -77,6 +124,8 @@ const App: Component = () => {
               title={w.title}
               zIndex={w.z}
               maximized={w.maximized}
+              minWidth={w.minWidth}
+              minHeight={w.minHeight}
               active={w.hwnd === activeWindow()}
               onclose={() => closeWindow(w.hwnd)}
               onminimize={() => minimize(w.hwnd)}

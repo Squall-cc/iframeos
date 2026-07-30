@@ -1,6 +1,8 @@
 import { drawToWindow } from "../Core/overlay";
+import { setMinSize } from "../Core/windowhelpers";
 
 export default function run(id: symbol) {
+  setMinSize(id, 400, 300);
   drawToWindow(id, (ctx) => {
     const canvas = ctx.canvas;
     let drawing = false;

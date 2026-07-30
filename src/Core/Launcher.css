@@ -2,9 +2,10 @@
   position: fixed;
   bottom: var(--panel-size);
   left: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 60px);
-  grid-template-rows: repeat(3, 60px);
+  display: flex;
+  flex-wrap: wrap;
+  max-height: calc(100vh - var(--panel-size) - 8px);
+  overflow-y: auto;
   background-color: var(--taskbar-bg);
 }
 
@@ -13,4 +14,5 @@
   height: 60px;
   background-color: var(--button-bg);
   border: none;
+  flex: 0 0 60px;
 }

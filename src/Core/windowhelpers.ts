@@ -12,6 +12,8 @@ interface WindowData {
   minimized: boolean;
   maximized: boolean;
   content?: JSX.Element;
+  minWidth?: number;
+  minHeight?: number;
 }
 let mx = 0;
 let my = 0;
@@ -160,6 +162,13 @@ export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
   });
   windowsmap.set(s, ulid());
   run?.(s);
+}
+
+export function setMinSize(hwnd: symbol, minWidth?: number, minHeight?: number) {
+  const patch: Partial<WindowData> = {};
+  if (minWidth !== undefined) patch.minWidth = minWidth;
+  if (minHeight !== undefined) patch.minHeight = minHeight;
+  setWindows((w) => w.hwnd === hwnd, patch);
 }
 
 export const debug123 = () =>

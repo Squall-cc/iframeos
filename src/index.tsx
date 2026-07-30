@@ -3,7 +3,7 @@ import { render } from "solid-js/web";
 import "solid-devtools";
 import * as appStoreApi from "./Apis/AppStore";
 import * as fileSystemApi from "./Apis/FileSystemApi";
-import { WindowHandle, spawn } from "./Apis/iSApi";
+import { WindowHandle, shellOpen, shellOpenWithPicker, shellSelectFile, getAllInstalledApps, launchSpaApp, spawn } from "./Apis/iSApi";
 import * as launcher from "./Apis/Launcher";
 import * as registryApi from "./Apis/RegistryApi";
 import * as scramjetApi from "./Apis/scramjet";
@@ -11,7 +11,6 @@ import App from "./Core/App";
 import * as systems from "./Core/systems";
 import * as editorApi from "./SysApps/editor";
 
-// fix explorer
 const fsInstance = new fileSystemApi.FileSystemAccess();
 const fs = { ...fileSystemApi, ...fsInstance };
 
@@ -28,9 +27,15 @@ declare global {
       editor: typeof editorApi;
       version: string;
       spawn: typeof spawn;
+      shellOpen: typeof shellOpen;
+      shellOpenWithPicker: typeof shellOpenWithPicker;
+      shellSelectFile: typeof shellSelectFile;
+      getAllInstalledApps: typeof getAllInstalledApps;
+      launchSpaApp: typeof launchSpaApp;
     };
     WindowHandle: typeof WindowHandle;
     spawn: typeof spawn;
+    shellOpen: typeof shellOpen;
   }
 }
 
@@ -45,12 +50,18 @@ const API = {
   editor: editorApi,
   version: "1.0.0",
   spawn,
+  shellOpen,
+  shellOpenWithPicker,
+  shellSelectFile,
+  getAllInstalledApps,
+  launchSpaApp,
 };
 
 // make global
 window.__API = API;
 window.WindowHandle = WindowHandle;
 window.spawn = spawn;
+window.shellOpen = shellOpen;
 
 // logging
 if (import.meta.env.DEV) {

@@ -1,10 +1,5 @@
 import { Component } from "../@types/component";
-/* 
-skidded from
-https://github.com/KasimAhmic/web-aero/blob/main/src/attributes/resizable.ts
-so formatting is abit off cuz i just copy and pasted and then skidded,
-also nvm cuz prettier ran
-*/
+
 type ResizeHandleLocation =
   | "top"
   | "left"
