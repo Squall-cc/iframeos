@@ -634,6 +634,26 @@ export async function shellSelectFile(
   });
 }
 
+function extractFunctionNames(code: string): string[] {
+  const names = new Set<string>();
+  const re = /function\s+([a-zA-Z_$][\w$]*)\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code))) names.add(m[1]);
+  return [...names];
+}
+
+function evalNamedFunction(code: string, name: string): Function | undefined {
+  if (!/^[a-zA-Z_$][\w$]*$/.test(name)) return undefined;
+  try {
+    const factory = new Function(
+      `${code}\nreturn typeof ${name} === "function" ? ${name} : undefined;`,
+    );
+    return factory() as Function | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function getAppEntryMethods(appKey: string): Promise<string[]> {
   const reg = new RegistryInstanceAccess();
   const record = await reg._load(`${APPS_REG_PREFIX}/${appKey}`);
@@ -649,21 +669,23 @@ async function getAppEntryMethods(appKey: string): Promise<string[]> {
   }
 
   const fs = new FileSystemAccess();
+  const methods = new Set<string>();
+
   const codePath = `/iSi/apps/${appKey}/entry.js`;
-  if (!fs.exists(codePath)) return ["run"];
-
-  const handle = fs.openFile(codePath);
-  const code = await handle.read();
-  if (!code) return ["run"];
-
-  try {
-    const exports: Record<string, unknown> = {};
-    const fn = new Function("exports", code);
-    fn(exports);
-    return Object.keys(exports).filter((k) => typeof exports[k] === "function");
-  } catch {
-    return ["run"];
+  if (fs.exists(codePath)) {
+    const code = await fs.openFile(codePath).read();
+    if (code) for (const name of extractFunctionNames(code)) methods.add(name);
   }
+
+  if (manifest?.hasFileOpener) {
+    const openerPath = `/iSi/apps/${appKey}/opener.js`;
+    if (fs.exists(openerPath)) {
+      const code = await fs.openFile(openerPath).read();
+      if (code) for (const name of extractFunctionNames(code)) methods.add(name);
+    }
+  }
+
+  return methods.size > 0 ? [...methods] : ["run"];
 }
 
 async function launchAppEntry(appKey: string, entryFn: string, filename?: string): Promise<boolean> {
@@ -708,20 +730,25 @@ async function launchAppEntry(appKey: string, entryFn: string, filename?: string
 
   const fs = new FileSystemAccess();
   const appDir = `/iSi/apps/${appKey}`;
-  const codePath = `${appDir}/entry.js`;
+  const openerPath = `${appDir}/opener.js`;
+  const entryPath = `${appDir}/entry.js`;
 
-  if (!fs.exists(codePath)) return false;
-  const handle = fs.openFile(codePath);
-  const code = await handle.read();
+  let code: string | undefined;
+  if (manifest?.hasFileOpener && fs.exists(openerPath)) {
+    const openerCode = await fs.openFile(openerPath).read();
+    if (openerCode && extractFunctionNames(openerCode).includes(entryFn)) {
+      code = openerCode;
+    }
+  }
+  if (!code && fs.exists(entryPath)) {
+    code = await fs.openFile(entryPath).read();
+  }
   if (!code) return false;
 
-  try {
-    const exports: Record<string, unknown> = {};
-    const fn = new Function("exports", code);
-    fn(exports);
-    const entryFnImpl = exports[entryFn] as Function;
-    if (typeof entryFnImpl !== "function") return false;
+  const entryFnImpl = evalNamedFunction(code, entryFn);
+  if (typeof entryFnImpl !== "function") return false;
 
+  try {
     if (filename) {
       spawnWindow(filename, (h) => {
         entryFnImpl(filename, h);

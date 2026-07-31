@@ -1,3 +1,6 @@
+import "@fortawesome/fontawesome-free/css/fontawesome.min.css";
+import "@fortawesome/fontawesome-free/css/solid.min.css";
+
 import { FileSystemAccess } from "../Apis/FileSystemApi";
 import { shellModal, shellOpenWithPicker } from "../Apis/iSApi";
 import { setContent, setMinSize } from "../Core/windowhelpers";
@@ -131,9 +134,9 @@ export default function run(hwnd: symbol) {
       row.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:2px;";
       row.style.cursor = isDir ? "pointer" : "default";
 
-      const icon = document.createElement("span");
-      icon.style.cssText = "font-size:14px;flex-shrink:0;";
-      icon.textContent = isDir ? "📁" : "📄";
+      const icon = document.createElement("i");
+      icon.className = isDir ? "fa-solid fa-folder" : "fa-solid fa-file";
+      icon.style.cssText = "font-size:13px;flex-shrink:0;width:14px;text-align:center;color:rgba(0,0,0,0.55);";
       row.appendChild(icon);
 
       const label = document.createElement("span");
