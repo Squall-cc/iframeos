@@ -91,7 +91,6 @@ export default function run(hwnd: symbol) {
         content.appendChild(entryRow);
 
         const fileOpener = raw["fileOpener"];
-        const selected = new Set<string>(info.fileAssociations);
 
         if (fileOpener && info.fileAssociations.length > 0) {
           const assocLabel = document.createElement("div");
@@ -109,11 +108,8 @@ export default function run(hwnd: symbol) {
             const cb = document.createElement("input");
             cb.type = "checkbox";
             cb.checked = true;
+            cb.value = ext;
             cb.style.cssText = "margin:0;cursor:pointer;";
-            cb.addEventListener("change", () => {
-              if (cb.checked) selected.add(ext);
-              else selected.delete(ext);
-            });
 
             row.appendChild(cb);
             row.appendChild(document.createTextNode(ext));
@@ -129,12 +125,15 @@ export default function run(hwnd: symbol) {
         installBtn.textContent = "Install";
         installBtn.style.cssText = btnStyle;
         installBtn.addEventListener("click", async () => {
+          const selected = [...content.querySelectorAll('input[type="checkbox"]:checked')]
+            .map((cb) => (cb as HTMLInputElement).value)
+            .filter(Boolean);
           installBtn.disabled = true;
           installBtn.textContent = "Installing...";
           statusBar.textContent = "Installing...";
           try {
             const name = await installSpaFromZip(bytes, {
-              fileAssociations: [...selected],
+              fileAssociations: selected,
             });
             statusBar.textContent = `Installed "${name}" successfully`;
             back();
