@@ -149,7 +149,6 @@ function pickEntry(exportsObj: Record<string, unknown>, entryFn: string): unknow
   }
   return undefined;
 }
-
 const INJECTED_NAMES = [
   "module",
   "exports",
@@ -298,6 +297,7 @@ export async function installSpaFromZip(bytes: ArrayBuffer): Promise<string> {
   const indexRecord = await reg._load(APP_INDEX_PATH);
   const list = (indexRecord?.values["list"] as Array<{ key: string }>) ?? [];
   if (!list.some((a) => a.key === key)) {
+    //@ts-ignore
     list.push({ key, name, version, description });
     await reg._write(APP_INDEX_PATH, "list", list);
   }
