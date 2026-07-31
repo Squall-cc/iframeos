@@ -25,6 +25,13 @@ interface WindowProps {
   onfocus?: () => void;
 }
 
+function panelSize(): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(
+    "--panel-size",
+  );
+  return parseFloat(raw) || 0;
+}
+
 const Window: ParentComponent<WindowProps> = (props) => {
   let offsetX = 0;
   let offsetY = 0;
@@ -96,9 +103,9 @@ const Window: ParentComponent<WindowProps> = (props) => {
   function startDrag(e: PointerEvent) {
     if ((e.target as HTMLElement).closest("#windowcontrols")) return;
     props.onfocus?.();
-    const rect = windowthingy.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
+    // fix
+    offsetX = e.clientX - windowthingy.offsetLeft;
+    offsetY = e.clientY - windowthingy.offsetTop;
     isMaxDrag = props.maximized;
     document.body.style.userSelect = "none";
     windowthingy.setPointerCapture(e.pointerId);
@@ -114,10 +121,11 @@ const Window: ParentComponent<WindowProps> = (props) => {
     if (saved) {
       const w = parseFloat(saved.width) || 600;
       const h = parseFloat(saved.height) || 400;
+      const maxH = window.innerHeight - panelSize();
       let left = e.clientX - offsetX;
       let top = e.clientY - offsetY;
       left = Math.max(0, Math.min(left, window.innerWidth - Math.min(w, window.innerWidth)));
-      top = Math.max(0, Math.min(top, window.innerHeight - Math.min(h, window.innerHeight)));
+      top = Math.max(0, Math.min(top, maxH - Math.min(h, maxH)));
       windowthingy.style.left = left + "px";
       windowthingy.style.top = top + "px";
       windowthingy.style.width = w + "px";
@@ -175,7 +183,10 @@ const Window: ParentComponent<WindowProps> = (props) => {
       }
       return;
     }
-    const maxTop = Math.max(0, window.innerHeight - windowthingy.offsetHeight);
+    const maxTop = Math.max(
+      0,
+      window.innerHeight - panelSize() - windowthingy.offsetHeight,
+    );
     const maxLeft = Math.max(0, window.innerWidth - windowthingy.offsetWidth);
     windowthingy.style.top =
       Math.min(Math.max(0, e.clientY - offsetY), maxTop) + "px";

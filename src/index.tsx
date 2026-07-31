@@ -27,9 +27,8 @@ declare global {
       editor: typeof editorApi;
       version: string;
       spawn: typeof spawn;
-    shellOpen: typeof shellOpen;
-    shellOpenWithPicker: typeof shellOpenWithPicker;
-    shellModal: typeof shellModal;
+      shellOpen: typeof shellOpen;
+      shellOpenWithPicker: typeof shellOpenWithPicker;
       shellModal: typeof shellModal;
       shellSelectFile: typeof shellSelectFile;
       getAllInstalledApps: typeof getAllInstalledApps;

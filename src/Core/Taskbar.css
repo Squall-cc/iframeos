@@ -7,11 +7,10 @@
   width: 100%;
   left: 0;
   bottom: 0;
+  border-top: 1px solid rgba(200, 200, 200, 0.9);
   background: linear-gradient(
     180deg,
     rgba(10, 10, 10, 0.8) 0%,
-    rgba(200, 200, 200, 0.9) 4%,
-    rgba(70, 70, 70, 0.4) 5%,
     rgba(70, 70, 70, 0.4) 100%
   );
   backdrop-filter: blur(4px);
