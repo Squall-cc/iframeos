@@ -355,6 +355,30 @@ export class FileSystemAccess {
     this.meta.deleteEntry(original);
   };
 
+  deleteDirectoryRecursive = (path: string): void => {
+    const original = normalizePath(path);
+    const entry = this.meta.getEntry(original);
+    if (!entry || entry.type !== "dir") return;
+
+    const children = this.meta.listChildren(original);
+    for (const childPath of children) {
+      const childEntry = this.meta.getEntry(childPath);
+      if (!childEntry) continue;
+      const display = childEntry.path;
+      if (childEntry.type === "dir") {
+        this.deleteDirectoryRecursive(display);
+      } else {
+        this.deleteFile(display);
+      }
+    }
+
+    const parent = normalizePath(
+      original.split("/").slice(0, -1).join("/") || "/",
+    );
+    this.meta.removeChild(parent, original);
+    this.meta.deleteEntry(original);
+  };
+
   listDirectory = (path: string): string[] => {
     return this.meta.listChildren(path).map((childLookup) => {
       const entry = this.meta.getEntry(childLookup);

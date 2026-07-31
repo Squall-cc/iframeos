@@ -29,6 +29,7 @@ const BUILTIN_APPS = [
   { key: "app-installer", name: "App Installer", description: "Install .spa apps" },
   { key: "file-explorer", name: "File Explorer", description: "Browse files" },
   { key: "test-app", name: "Test App", description: "Tests all features" },
+  { key: "control-panel", name: "Control Panel", description: "System settings and reset" },
 ];
 
 const App: Component = () => {

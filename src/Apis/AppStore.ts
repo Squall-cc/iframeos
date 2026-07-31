@@ -33,6 +33,7 @@ const DEFAULT_BUILTIN_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "app-installer", name: "App Installer" },
   { type: "builtin", key: "file-explorer", name: "File Explorer" },
   { type: "builtin", key: "test-app", name: "Test App" },
+  { type: "builtin", key: "control-panel", name: "Control Panel" },
 ];
 
 // bypasses RegistryKey's fire-and-forget getValue().value (populated async

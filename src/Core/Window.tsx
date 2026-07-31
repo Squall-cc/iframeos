@@ -33,10 +33,14 @@ const Window: ParentComponent<WindowProps> = (props) => {
   let windowthingy!: HTMLDivElement; // eslint-disable-line no-unassigned-vars
 
   onMount(() => {
+    const ow = windowthingy.offsetWidth;
+    const oh = windowthingy.offsetHeight;
     windowthingy.style.left =
-      (window.innerWidth - windowthingy.offsetWidth) / 2 + "px";
+      (window.innerWidth - ow) / 2 + "px";
     windowthingy.style.top =
-      (window.innerHeight - windowthingy.offsetHeight) / 2 + "px";
+      (window.innerHeight - oh) / 2 + "px";
+    if (!windowthingy.style.width || windowthingy.style.width === "auto") windowthingy.style.width = ow + "px";
+    if (!windowthingy.style.height || windowthingy.style.height === "auto") windowthingy.style.height = oh + "px";
     registerWindowElement(props.hwnd, windowthingy);
     new Resizable(
       { container: windowthingy },

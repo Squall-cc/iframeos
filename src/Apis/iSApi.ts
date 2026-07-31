@@ -137,31 +137,109 @@ export async function shellOpen(filename: string): Promise<ShellOpenResult> {
   const ext = filename.slice(extIdx).toLowerCase();
 
   const assocRecord = await reg._load(`${CLASSES_ROOT_PREFIX}/${ext}`);
-  if (!assocRecord) return { handled: false };
+  if (!assocRecord) return shellOpenWithPickerInternal(filename, ext);
 
   const assoc = assocRecord.values as Record<string, string>;
   const appKey = assoc["app"];
   const entryFn = assoc["entry"];
-  if (!appKey || !entryFn) return { handled: false };
+  if (!appKey || !entryFn) return shellOpenWithPickerInternal(filename, ext);
 
   const ok = await launchAppEntry(appKey, entryFn, filename);
-  return { handled: ok, appKey, entry: entryFn };
+  if (ok) return { handled: ok, appKey, entry: entryFn };
+  return shellOpenWithPickerInternal(filename, ext);
 }
 
-export async function shellOpenWithPicker(filename: string): Promise<boolean> {
-  const result = await shellOpen(filename);
-  if (result.handled) return true;
-
-  const extIdx = filename.lastIndexOf(".");
-  const ext = extIdx !== -1 ? filename.slice(extIdx).toLowerCase() : "";
-
+async function shellOpenWithPickerInternal(
+  filename: string,
+  ext: string,
+): Promise<ShellOpenResult> {
   const selected = await showAppPicker(
     `Open "${filename.split("/").pop()}" with:`,
     ext,
   );
-  if (!selected) return false;
+  if (!selected) return { handled: false };
 
-  return launchAppEntry(selected.appKey, selected.entry, filename);
+  const ok = await launchAppEntry(selected.appKey, selected.entry, filename);
+  return { handled: ok, appKey: selected.appKey, entry: selected.entry };
+}
+
+export async function shellOpenWithPicker(filename: string): Promise<boolean> {
+  const result = await shellOpen(filename);
+  return result.handled;
+}
+
+export type ShellModalType = "error" | "info" | "warn" | "yesno" | "abortretrycancel" | "retrycancel";
+
+export type ShellModalResult = "ok" | "abort" | "retry" | "cancel" | "yes" | "no";
+
+export function shellModal(
+  type: ShellModalType,
+  _hwnd: symbol,
+  title: string,
+  content: string,
+): Promise<ShellModalResult> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+
+    const dialog = document.createElement("div");
+    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:320px;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;";
+
+    const titleEl = document.createElement("div");
+    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px;";
+    titleEl.textContent = title;
+    dialog.appendChild(titleEl);
+
+    const contentEl = document.createElement("div");
+    contentEl.style.cssText = "margin-bottom:16px;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;";
+    contentEl.textContent = content;
+    dialog.appendChild(contentEl);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+
+    const buttons: { label: string; value: ShellModalResult }[] = [];
+    switch (type) {
+      case "error":
+      case "info":
+      case "warn":
+        buttons.push({ label: "OK", value: "ok" });
+        break;
+      case "yesno":
+        buttons.push({ label: "Yes", value: "yes" });
+        buttons.push({ label: "No", value: "no" });
+        break;
+      case "abortretrycancel":
+        buttons.push({ label: "Abort", value: "abort" });
+        buttons.push({ label: "Retry", value: "retry" });
+        buttons.push({ label: "Cancel", value: "cancel" });
+        break;
+      case "retrycancel":
+        buttons.push({ label: "Retry", value: "retry" });
+        buttons.push({ label: "Cancel", value: "cancel" });
+        break;
+    }
+
+    for (const btn of buttons) {
+      const el = document.createElement("button");
+      el.textContent = btn.label;
+      el.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
+      if (btn.value === "ok" || btn.value === "yes" || btn.value === "retry") {
+        el.style.border = "1px solid rgba(0,100,200,0.5)";
+        el.style.background = "rgba(0,100,200,0.1)";
+        el.style.fontWeight = "600";
+      }
+      el.addEventListener("click", () => {
+        overlay.remove();
+        resolve(btn.value);
+      });
+      btnRow.appendChild(el);
+    }
+
+    dialog.appendChild(btnRow);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+  });
 }
 
 function showAppPicker(
@@ -185,7 +263,10 @@ function showAppPicker(
 
     function cancel() { overlay.remove(); resolve(null); }
 
-    (async () => {
+    async function renderAppListView() {
+      list.innerHTML = "";
+      titleEl.textContent = title;
+
       try {
         const reg = new RegistryInstanceAccess();
         const indexRecord = await reg._load(APP_INDEX_PATH);
@@ -223,78 +304,123 @@ function showAppPicker(
             item.textContent = app.name;
             item.addEventListener("mouseenter", () => { item.style.background = "rgba(0,0,0,0.06)"; });
             item.addEventListener("mouseleave", () => { item.style.background = ""; });
-            item.addEventListener("click", async () => {
-              try {
-                const entry = prompt("Enter entry point function name:", "run");
-                if (!entry) return;
-                const save = confirm("Save this association for future use?");
-                if (save && ext) {
-                  await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", app.key);
-                  await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", entry);
-                }
-                overlay.remove();
-                resolve({ appKey: app.key, entry });
-              } catch (err) {
-                console.error("showAppPicker click:", err);
-              }
-            });
+            item.addEventListener("click", () => renderMethodView(app.key, app.name));
             list.appendChild(item);
           }
         }
-
-        const cancelBtn = document.createElement("button");
-        cancelBtn.textContent = "Cancel";
-        cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;align-self:flex-end;";
-        cancelBtn.addEventListener("click", cancel);
-
-        dialog.appendChild(list);
-        dialog.appendChild(cancelBtn);
-        overlay.appendChild(dialog);
-        document.body.appendChild(overlay);
       } catch (e) {
         console.error("showAppPicker:", e);
         cancel();
       }
-    })();
+    }
+
+    async function renderMethodView(appKey: string, appName: string) {
+      list.innerHTML = "";
+      titleEl.textContent = `Select entry point for "${appName}"`;
+
+      const reg = new RegistryInstanceAccess();
+
+      const backItem = document.createElement("div");
+      backItem.style.cssText = "padding:6px 8px;cursor:pointer;font-size:11px;font-weight:600;color:#0078d4;border-bottom:1px solid rgba(0,0,0,0.05);";
+      backItem.textContent = "← Back to apps";
+      backItem.addEventListener("mouseenter", () => { backItem.style.background = "rgba(0,0,0,0.06)"; });
+      backItem.addEventListener("mouseleave", () => { backItem.style.background = ""; });
+      backItem.addEventListener("click", renderAppListView);
+      list.appendChild(backItem);
+
+      try {
+        const methods = await getAppEntryMethods(appKey);
+
+        for (const method of methods) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:8px 8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.05);font-size:11px;";
+          item.textContent = method;
+          item.addEventListener("mouseenter", () => { item.style.background = "rgba(0,0,0,0.06)"; });
+          item.addEventListener("mouseleave", () => { item.style.background = ""; });
+          item.addEventListener("click", async () => {
+            try {
+              const save = confirm("Save this association for future use?");
+              if (save && ext) {
+                await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", appKey);
+                await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", method);
+              }
+              overlay.remove();
+              resolve({ appKey, entry: method });
+            } catch (err) {
+              console.error("renderMethodView click:", err);
+            }
+          });
+          list.appendChild(item);
+        }
+      } catch (e) {
+        console.error("showAppPicker methods:", e);
+      }
+    }
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;align-self:flex-end;";
+    cancelBtn.addEventListener("click", cancel);
+
+    dialog.appendChild(list);
+    dialog.appendChild(cancelBtn);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    renderAppListView();
   });
 }
 
+export interface ShellSelectFileOptions {
+  title?: string;
+  filter?: { label: string; extensions: string[] };
+  save?: boolean;
+}
+
 export async function shellSelectFile(
-  options?: { title?: string; filter?: { label: string; extensions: string[] } },
+  options?: ShellSelectFileOptions,
 ): Promise<string | null> {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
 
     const dialog = document.createElement("div");
-    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:480px;min-height:350px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;display:flex;flex-direction:column;";
+    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:580px;min-height:420px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;display:flex;flex-direction:column;";
 
     const titleEl = document.createElement("div");
     titleEl.style.cssText = "font-weight:600;margin-bottom:8px;";
     titleEl.textContent = options?.title ?? "Select a file";
     dialog.appendChild(titleEl);
 
-    const navBar = document.createElement("div");
-    navBar.style.cssText = "display:flex;gap:4px;margin-bottom:6px;align-items:center;";
+    const pathDisplay = document.createElement("div");
+    pathDisplay.style.cssText = "font-size:11px;padding:3px 6px;background:rgba(0,0,0,0.04);border-radius:2px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+    dialog.appendChild(pathDisplay);
 
-    const pathDisplay = document.createElement("span");
-    pathDisplay.style.cssText = "flex:1;font-size:11px;padding:2px 4px;background:rgba(0,0,0,0.04);border-radius:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-    navBar.appendChild(pathDisplay);
+    const body = document.createElement("div");
+    body.style.cssText = "display:flex;flex:1;overflow:hidden;gap:6px;margin-bottom:8px;";
 
-    dialog.appendChild(navBar);
+    const sidebar = document.createElement("div");
+    sidebar.style.cssText = "width:180px;min-width:180px;display:flex;flex-direction:column;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.1);border-radius:2px;overflow-y:auto;";
 
-    const fileList = document.createElement("div");
-    fileList.style.cssText = "flex:1;overflow-y:auto;border:1px solid rgba(0,0,0,0.1);border-radius:2px;margin-bottom:8px;";
-    dialog.appendChild(fileList);
+    const sidebarHeader = document.createElement("div");
+    sidebarHeader.style.cssText = "padding:3px 6px;font-weight:600;font-size:11px;border-bottom:1px solid rgba(0,0,0,0.1);";
+    sidebarHeader.textContent = "Folders";
+    sidebar.appendChild(sidebarHeader);
 
-    const btnRow = document.createElement("div");
-    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    const treeContainer = document.createElement("div");
+    treeContainer.style.cssText = "flex:1;overflow-y:auto;";
+    sidebar.appendChild(treeContainer);
+
+    body.appendChild(sidebar);
+
+    const rightPanel = document.createElement("div");
+    rightPanel.style.cssText = "flex:1;display:flex;flex-direction:column;overflow:hidden;";
 
     const filterRow = document.createElement("div");
-    filterRow.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px;";
+    filterRow.style.cssText = "display:flex;gap:4px;align-items:center;margin-bottom:4px;";
 
     const filterSelect = document.createElement("select");
-    filterSelect.style.cssText = "flex:1;padding:3px 4px;font-size:11px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;";
+    filterSelect.style.cssText = "flex:1;padding:2px 4px;font-size:11px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;";
 
     const allFilter = document.createElement("option");
     allFilter.value = "*";
@@ -309,19 +435,46 @@ export async function shellSelectFile(
     }
     filterRow.appendChild(filterSelect);
 
+    const upBtn = document.createElement("button");
+    upBtn.textContent = "Up";
+    upBtn.style.cssText = "padding:2px 8px;font-size:11px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:rgba(255,255,255,0.5);";
+    filterRow.appendChild(upBtn);
+
+    rightPanel.appendChild(filterRow);
+
+    const fileList = document.createElement("div");
+    fileList.style.cssText = "flex:1;overflow-y:auto;border:1px solid rgba(0,0,0,0.1);border-radius:2px;";
+    fileList.id = "sel-file-list";
+    rightPanel.appendChild(fileList);
+
+    body.appendChild(rightPanel);
+    dialog.appendChild(body);
+
+    const bottomRow = document.createElement("div");
+    bottomRow.style.cssText = "display:flex;gap:8px;align-items:center;";
+
+    const fileNameLabel = document.createElement("span");
+    fileNameLabel.style.cssText = "font-size:11px;white-space:nowrap;";
+    fileNameLabel.textContent = "File name:";
+    bottomRow.appendChild(fileNameLabel);
+
+    const fileNameInput = document.createElement("input");
+    fileNameInput.type = "text";
+    fileNameInput.style.cssText = "flex:1;padding:3px 6px;font-size:12px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;font-family:Segoe UI,sans-serif;";
+    bottomRow.appendChild(fileNameInput);
+
     const okBtn = document.createElement("button");
-    okBtn.textContent = "Open";
+    okBtn.textContent = options?.save ? "Save" : "Open";
     okBtn.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;font-size:11px;";
+    bottomRow.appendChild(okBtn);
 
     const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
     cancelBtn.addEventListener("click", () => { overlay.remove(); resolve(null); });
+    bottomRow.appendChild(cancelBtn);
 
-    btnRow.appendChild(filterRow);
-    btnRow.appendChild(okBtn);
-    btnRow.appendChild(cancelBtn);
-    dialog.appendChild(btnRow);
+    dialog.appendChild(bottomRow);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
@@ -347,12 +500,28 @@ export async function shellSelectFile(
       return exts.some((e) => name.toLowerCase().endsWith(e.trim().toLowerCase()));
     }
 
+    function buildDirectoryTree() {
+      treeContainer.innerHTML = "";
+      const topDirs = fs.listDirectory("/").filter((p) => p !== "/" && fs.isDirectory(p)).sort();
+      const roots = [{ name: "/", path: "/" as string | null }, ...topDirs.map((p) => ({ name: p.split("/").filter(Boolean).pop() || "", path: p }))];
+      for (const entry of roots) {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:3px;padding:2px 4px;cursor:pointer;font-size:11px;";
+        row.style.background = (entry.path === currentPath || (!entry.path && currentPath === "/")) ? "rgba(0,100,200,0.2)" : "";
+        row.textContent = entry.name;
+        row.addEventListener("click", () => renderDir(entry.path || "/"));
+        row.addEventListener("mouseenter", () => { if (row.style.background.includes("rgba(0,100,200")) return; row.style.background = "rgba(0,0,0,0.06)"; });
+        row.addEventListener("mouseleave", () => { if (row.style.background.includes("rgba(0,100,200")) return; row.style.background = ""; });
+        treeContainer.appendChild(row);
+      }
+    }
+
     function renderDir(path: string) {
       currentPath = normalizePath(path);
       pathDisplay.textContent = currentPath;
       fileList.innerHTML = "";
       selectedFile = null;
-      okBtn.style.opacity = "0.5";
+      fileNameInput.value = "";
 
       const entries = fs.listDirectory(currentPath).filter((p) => p !== currentPath);
       const sorted = entries.sort((a, b) => {
@@ -393,7 +562,10 @@ export async function shellSelectFile(
           document.querySelectorAll("#sel-file-list > div").forEach((el) => (el as HTMLElement).style.background = "");
           if (!isDir && matchesFilter(name)) {
             selectedFile = entry;
-            okBtn.style.opacity = "1";
+            fileNameInput.value = name;
+            row.style.background = "rgba(0,100,200,0.2)";
+          }
+          if (isDir) {
             row.style.background = "rgba(0,100,200,0.2)";
           }
         });
@@ -401,29 +573,97 @@ export async function shellSelectFile(
           if (isDir) renderDir(entry);
         });
         row.addEventListener("mouseenter", () => {
-          if (selectedFile !== entry) row.style.background = "rgba(0,0,0,0.06)";
+          if (row.style.background.includes("rgba(0,100,200")) return;
+          row.style.background = "rgba(0,0,0,0.06)";
         });
         row.addEventListener("mouseleave", () => {
-          if (selectedFile !== entry) row.style.background = "";
+          if (row.style.background.includes("rgba(0,100,200")) return;
+          row.style.background = "";
         });
 
         fileList.appendChild(row);
       }
-
-      fileList.id = "sel-file-list";
+      buildDirectoryTree();
     }
+
+    function getSelectedPath(): string | null {
+      const name = fileNameInput.value.trim();
+      if (!name) {
+        if (options?.save) {
+          shellModal("info", Symbol(), "No Filename", "Please enter a filename.");
+        }
+        return null;
+      }
+      const fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
+      if (!options?.save) {
+        if (!fs.exists(fullPath)) {
+          shellModal("warn", Symbol(), "File Not Found", `The file "${name}" does not exist.`);
+          return null;
+        }
+        return fullPath;
+      }
+      return fullPath;
+    }
+
+    upBtn.addEventListener("click", () => {
+      const parent = currentPath.split("/").slice(0, -1).join("/") || "/";
+      renderDir(parent);
+    });
 
     filterSelect.addEventListener("change", () => renderDir(currentPath));
 
     okBtn.addEventListener("click", () => {
-      if (selectedFile) {
+      const path = getSelectedPath();
+      if (path) {
         overlay.remove();
-        resolve(selectedFile);
+        resolve(path);
+      }
+    });
+
+    fileNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const path = getSelectedPath();
+        if (path) {
+          overlay.remove();
+          resolve(path);
+        }
       }
     });
 
     renderDir("/");
   });
+}
+
+async function getAppEntryMethods(appKey: string): Promise<string[]> {
+  const reg = new RegistryInstanceAccess();
+  const record = await reg._load(`${APPS_REG_PREFIX}/${appKey}`);
+  if (!record) return ["run"];
+
+  const manifest = record.values["manifest"] as { type?: string; hasFileOpener?: boolean } | undefined;
+  const appType = manifest?.type || "spa";
+
+  if (appType === "builtin") {
+    const methods = ["run", "openFile"];
+    if (appKey === "editor") methods.push("editFile");
+    return methods;
+  }
+
+  const fs = new FileSystemAccess();
+  const codePath = `/iSi/apps/${appKey}/entry.js`;
+  if (!fs.exists(codePath)) return ["run"];
+
+  const handle = fs.openFile(codePath);
+  const code = await handle.read();
+  if (!code) return ["run"];
+
+  try {
+    const exports: Record<string, unknown> = {};
+    const fn = new Function("exports", code);
+    fn(exports);
+    return Object.keys(exports).filter((k) => typeof exports[k] === "function");
+  } catch {
+    return ["run"];
+  }
 }
 
 async function launchAppEntry(appKey: string, entryFn: string, filename?: string): Promise<boolean> {

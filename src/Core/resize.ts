@@ -173,8 +173,8 @@ export class Resizable {
     const initialY = event.clientY;
     const initialLeft = el.offsetLeft;
     const initialTop = el.offsetTop;
-    const initialWidth = el.clientWidth;
-    const initialHeight = el.clientHeight;
+    const initialWidth = el.offsetWidth;
+    const initialHeight = el.offsetHeight;
     const minW = parseFloat(getComputedStyle(el).minWidth) || 0;
     const minH = parseFloat(getComputedStyle(el).minHeight) || 0;
 

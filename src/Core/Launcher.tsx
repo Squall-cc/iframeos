@@ -8,7 +8,9 @@ import type { LauncherAppEntry } from "../Apis/AppStore";
 import { getAllInstalledApps, launchSpaApp } from "../Apis/iSApi";
 import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
+import controlPanel from "../SysApps/control-panel";
 import draw from "../SysApps/draw";
+import editor from "../SysApps/editor";
 import fileExplorer from "../SysApps/file-explorer";
 import hello from "../SysApps/hello";
 import hi from "../SysApps/hi";
@@ -24,10 +26,12 @@ const builtinApps = new Map([
   ["draw", draw],
   ["launch", launch],
   ["browser", browser],
+  ["editor", editor],
   ["registry-editor", registryEditor],
   ["app-installer", appInstaller],
   ["file-explorer", fileExplorer],
   ["test-app", testApp],
+  ["control-panel", controlPanel],
 ]);
 
 async function getAllApps(): Promise<LauncherAppEntry[]> {

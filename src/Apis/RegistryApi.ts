@@ -91,9 +91,13 @@ export class RegistryInstanceAccess {
     const obj: RegistryRecord = existing || { path, values: {} };
     obj.values[name] = value;
 
-    const tx = this.db!.transaction("registry", "readwrite");
-    const store = tx.objectStore("registry");
-    store.put(obj);
+    await new Promise<void>((resolve, reject) => {
+      const tx = this.db!.transaction("registry", "readwrite");
+      const store = tx.objectStore("registry");
+      const req = store.put(obj);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
   }
 
   async _deleteValue(path: string, name: string): Promise<void> {
@@ -104,17 +108,25 @@ export class RegistryInstanceAccess {
 
     delete existing.values[name];
 
-    const tx = this.db!.transaction("registry", "readwrite");
-    const store = tx.objectStore("registry");
-    store.put(existing);
+    await new Promise<void>((resolve, reject) => {
+      const tx = this.db!.transaction("registry", "readwrite");
+      const store = tx.objectStore("registry");
+      const req = store.put(existing);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
   }
 
   async _deleteKey(path: string): Promise<void> {
     await this.ready;
 
-    const tx = this.db!.transaction("registry", "readwrite");
-    const store = tx.objectStore("registry");
-    store.delete(path);
+    await new Promise<void>((resolve, reject) => {
+      const tx = this.db!.transaction("registry", "readwrite");
+      const store = tx.objectStore("registry");
+      const req = store.delete(path);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
   }
 }
 

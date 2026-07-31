@@ -1,5 +1,5 @@
 import { FileSystemAccess } from "../Apis/FileSystemApi";
-import { getAllInstalledApps, launchSpaApp, shellSelectFile } from "../Apis/iSApi";
+import { getAllInstalledApps, launchSpaApp, shellModal, shellSelectFile } from "../Apis/iSApi";
 import { RegistryInstanceAccess } from "../Apis/RegistryApi";
 import { setContent, setMinSize } from "../Core/windowhelpers";
 

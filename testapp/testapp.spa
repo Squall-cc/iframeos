@@ -1,0 +1,8 @@
+{
+  "name": "Demo SPA",
+  "key": "demo-spa",
+  "version": "1.0.0",
+  "description": "A demo SPA with multiple entry points for testing the app picker",
+  "entryPoint": "exports.run = function(hwnd) { var d = document.createElement('div'); d.style.cssText = 'padding:20px;font-family:Segoe UI,sans-serif;'; d.innerHTML = '<h2>Demo SPA</h2><p>Installed from .spa file</p>'; var btn = document.createElement('button'); btn.textContent = 'Click'; btn.onclick = function() { alert('hi'); }; d.appendChild(btn); hwnd.setContent(d); }; exports.greet = function(name, hwnd) { var d = document.createElement('div'); d.style.cssText = 'padding:20px;font-family:Segoe UI,sans-serif;'; d.innerHTML = '<h2>Hello ' + name + '</h2>'; hwnd.setContent(d); }; exports.openFile = function(path, hwnd) { var fs = new __API.fs.FileSystemAccess(); var handle = fs.openFile(path); handle.read().then(function(text) { var d = document.createElement('div'); d.style.cssText = 'padding:20px;font-family:Segoe UI,sans-serif;'; d.innerHTML = '<h3>' + path.split('/').pop() + '</h3><pre>' + (text || '') + '</pre>'; hwnd.setContent(d); }); };",
+  "fileOpener": "exports.openFile = function(path, hwnd) { var fs = new __API.fs.FileSystemAccess(); var handle = fs.openFile(path); handle.read().then(function(text) { var d = document.createElement('div'); d.style.cssText = 'padding:20px;font-family:Segoe UI,sans-serif;'; d.innerHTML = '<h3>' + path.split('/').pop() + '</h3><pre>' + (text || '') + '</pre>'; hwnd.setContent(d); }); };"
+}

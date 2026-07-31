@@ -1,5 +1,5 @@
 import { FileSystemAccess } from "../Apis/FileSystemApi";
-import { shellOpenWithPicker } from "../Apis/iSApi";
+import { shellModal, shellOpenWithPicker } from "../Apis/iSApi";
 import { setContent, setMinSize } from "../Core/windowhelpers";
 
 let currentPath = "/";
@@ -158,6 +158,7 @@ export default function run(hwnd: symbol) {
         } else {
           const ok = await shellOpenWithPicker(entry);
           if (!ok) {
+            shellModal("error", hwnd, "Cannot Open File", `No app could open "${name}". Try registering a file association first.`);
             statusBar.textContent = `No app could open "${name}"`;
           }
         }
