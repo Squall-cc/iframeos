@@ -15,10 +15,11 @@ import { spawn } from "../Core/windowhelpers";
 import type { RegisteredSpaManifest } from "./AppManifest";
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
-import { unzip } from "./zip";
+import { unzip, type ZipEntry } from "./zip";
 
 export const APPS_REG_PREFIX = "InternalSystem/Apps";
 export const APP_INDEX_PATH = "InternalSystem/AppIndex";
+export const CLASSES_ROOT_PREFIX = "InternalSystem/ClassesRoot";
 
 const DEFAULT_ENTRY_MODULE = "main.ts";
 
@@ -227,20 +228,61 @@ function ensureDirs(fs: FileSystemAccess, filePath: string): void {
   }
 }
 
-export async function installSpaFromZip(bytes: ArrayBuffer): Promise<string> {
-  const entries = await unzip(bytes);
+function normalizeExtension(ext: string): string {
+  const e = ext.trim().toLowerCase();
+  if (!e) return "";
+  return e.startsWith(".") ? e : "." + e;
+}
 
+async function extractManifest(entries: ZipEntry[]): Promise<Record<string, unknown>> {
   const manifestEntry = entries.find((e) => e.name.toLowerCase() === "manifest.json");
   if (!manifestEntry) {
     throw new Error(".spa archive must contain a manifest.json");
   }
-
-  let raw: Record<string, unknown>;
   try {
-    raw = JSON.parse(new TextDecoder().decode(manifestEntry.data)) as Record<string, unknown>;
+    return JSON.parse(new TextDecoder().decode(manifestEntry.data)) as Record<string, unknown>;
   } catch {
     throw new Error("invalid manifest.json in .spa archive");
   }
+}
+
+export interface SpaArchiveInfo {
+  manifest: Record<string, unknown>;
+  fileAssociations: string[];
+  fileCount: number;
+  entries: ZipEntry[];
+}
+
+// parses a .spa archive so the installer can preview the manifest and let the
+// user pick which file associations to create before installing.
+export async function parseSpaArchive(bytes: ArrayBuffer): Promise<SpaArchiveInfo> {
+  const entries = await unzip(bytes);
+  const manifest = await extractManifest(entries);
+  const rawAssoc = Array.isArray(manifest["fileassoc"])
+    ? (manifest["fileassoc"] as unknown[])
+    : [];
+  return {
+    manifest,
+    fileAssociations: rawAssoc
+      .filter((e): e is string => typeof e === "string")
+      .map(normalizeExtension)
+      .filter(Boolean),
+    fileCount: entries.length,
+    entries,
+  };
+}
+
+export interface InstallSpaOptions {
+  // extensions to associate in ClassesRoot; defaults to the manifest's
+  // "fileassoc" list. only used when the app declares a fileOpener.
+  fileAssociations?: string[];
+}
+
+export async function installSpaFromZip(
+  bytes: ArrayBuffer,
+  options?: InstallSpaOptions,
+): Promise<string> {
+  const { manifest: raw, fileAssociations, entries } = await parseSpaArchive(bytes);
 
   const name = raw["name"] as string | undefined;
   const key = raw["key"] as string | undefined;
@@ -288,6 +330,7 @@ export async function installSpaFromZip(bytes: ArrayBuffer): Promise<string> {
     entryModule,
     fileOpener,
     fileOpenerModule,
+    fileassoc: fileAssociations,
     hasFileOpener: !!fileOpener,
   };
 
@@ -300,6 +343,16 @@ export async function installSpaFromZip(bytes: ArrayBuffer): Promise<string> {
     //@ts-ignore
     list.push({ key, name, version, description });
     await reg._write(APP_INDEX_PATH, "list", list);
+  }
+
+  if (fileOpener) {
+    const assoc = (options?.fileAssociations ?? fileAssociations)
+      .map(normalizeExtension)
+      .filter(Boolean);
+    for (const ext of assoc) {
+      await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", key);
+      await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", fileOpener);
+    }
   }
 
   return name;

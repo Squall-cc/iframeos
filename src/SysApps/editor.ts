@@ -88,11 +88,16 @@ function buildEditor(hwnd: symbol, initialPath?: string) {
   textarea.spellcheck = false;
 
   if (initialPath) {
-    const file = fs.openFile(initialPath);
-    file.read().then((text) => {
-      textarea.value = text ?? "";
+    if (!fs.isFile(initialPath)) {
+      shellModal("warn", hwnd, "File Not Found", `"${initialPath}" does not exist.`);
       textarea.disabled = false;
-    });
+    } else {
+      const file = fs.openFile(initialPath);
+      file.read().then((text) => {
+        textarea.value = text ?? "";
+        textarea.disabled = false;
+      });
+    }
   } else {
     textarea.disabled = false;
   }
@@ -114,6 +119,10 @@ function buildEditor(hwnd: symbol, initialPath?: string) {
   function doLoad() {
     shellSelectFile({ title: "Open File" }).then((path) => {
       if (!path) return;
+      if (!fs.isFile(path)) {
+        shellModal("warn", hwnd, "File Not Found", `"${path}" does not exist.`);
+        return;
+      }
       if (dirty) {
         shellModal("yesno", hwnd, "Unsaved Changes", "Save current file first?").then((r) => {
           if (r === "yes") doSave();
@@ -161,6 +170,11 @@ function buildEditor(hwnd: symbol, initialPath?: string) {
 }
 
 export function editFile(path: string): void {
+  const fs = new FileSystemAccess();
+  if (!fs.isFile(path)) {
+    shellModal("warn", Symbol(), "File Not Found", `"${path}" does not exist.`);
+    return;
+  }
   spawn(path, (hwnd) => buildEditor(hwnd, path));
 }
 

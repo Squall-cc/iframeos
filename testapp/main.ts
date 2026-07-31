@@ -32,6 +32,10 @@ export function greet(name: string, hwnd: any) {
 
 export function openFile(path: string, hwnd: any) {
   const fs = new __API.fs.FileSystemAccess();
+  if (!fs.isFile(path)) {
+    view(`<h3>${path.split("/").pop()}</h3><p style="color:#a00">File does not exist (not found).</p>`, hwnd);
+    return;
+  }
   const handle = fs.openFile(path);
   handle.read().then((text: string) => {
     view(`<h3>${path.split("/").pop()}</h3><pre>${text || ""}</pre>`, hwnd);

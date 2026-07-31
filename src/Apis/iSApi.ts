@@ -598,13 +598,6 @@ export async function shellSelectFile(
         return null;
       }
       const fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
-      if (!options?.save) {
-        if (!fs.exists(fullPath)) {
-          shellModal("warn", Symbol(), "File Not Found", `The file "${name}" does not exist.`);
-          return null;
-        }
-        return fullPath;
-      }
       return fullPath;
     }
 

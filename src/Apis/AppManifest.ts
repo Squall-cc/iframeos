@@ -15,6 +15,8 @@ export interface SpaManifest {
   fileOpener?: string;
   // optional module containing the file opener (default: entryModule)
   fileOpenerModule?: string;
+  // file extensions to offer associating with this app on install (e.g. [".txt"])
+  fileassoc?: string[];
 }
 
 // the manifest as stored in the registry (InternalSystem/Apps/{key})
@@ -28,6 +30,7 @@ export interface RegisteredSpaManifest {
   entryModule?: string;
   fileOpener?: string;
   fileOpenerModule?: string;
+  fileassoc?: string[];
   hasFileOpener: boolean;
 }
 

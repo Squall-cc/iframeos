@@ -1,6 +1,6 @@
 import { FileSystemAccess } from "../Apis/FileSystemApi";
 import { getAllInstalledApps, launchSpaApp, shellSelectFile } from "../Apis/iSApi";
-import { installSpaFromZip } from "../Apis/SpaApp";
+import { installSpaFromZip, parseSpaArchive } from "../Apis/SpaApp";
 import { setContent, setMinSize } from "../Core/windowhelpers";
 
 export default function run(hwnd: symbol) {
@@ -52,6 +52,114 @@ export default function run(hwnd: symbol) {
     }
   }
 
+  const btnStyle =
+    "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;";
+  const ghostBtnStyle =
+    "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:rgba(255,255,255,0.5);align-self:flex-start;";
+
+  // shared confirmation step: show the manifest and let the user pick which
+  // file types from the manifest's "fileassoc" list get registered
+  function showConfirmView(
+    bytes: ArrayBuffer,
+    fileName: string,
+    back: () => void,
+  ) {
+    statusBar.textContent = "Parsing archive...";
+    parseSpaArchive(bytes)
+      .then((info) => {
+        content.innerHTML = "";
+        const raw = info.manifest;
+
+        const title = document.createElement("div");
+        title.style.cssText = "font-weight:600;font-size:13px;";
+        title.textContent = `Install "${raw["name"] ?? fileName}" v${raw["version"] ?? "?"}`;
+        content.appendChild(title);
+
+        const keyRow = document.createElement("div");
+        keyRow.style.cssText = "font-size:11px;color:rgba(0,0,0,0.5);";
+        keyRow.textContent = `Key: ${String(raw["key"] ?? "?")}`;
+        content.appendChild(keyRow);
+
+        const descRow = document.createElement("div");
+        descRow.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);";
+        descRow.textContent = String(raw["description"] ?? "");
+        content.appendChild(descRow);
+
+        const entryRow = document.createElement("div");
+        entryRow.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);";
+        entryRow.textContent = `Entry point: ${String(raw["entryPoint"] ?? "run")}`;
+        content.appendChild(entryRow);
+
+        const fileOpener = raw["fileOpener"];
+        const selected = new Set<string>(info.fileAssociations);
+
+        if (fileOpener && info.fileAssociations.length > 0) {
+          const assocLabel = document.createElement("div");
+          assocLabel.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);margin-top:4px;";
+          assocLabel.textContent = `Associate these file types with "${raw["name"] ?? fileName}"?`;
+          content.appendChild(assocLabel);
+
+          const box = document.createElement("div");
+          box.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid rgba(0,0,0,0.1);border-radius:2px;";
+
+          for (const ext of info.fileAssociations) {
+            const row = document.createElement("label");
+            row.style.cssText = "display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;";
+
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = true;
+            cb.style.cssText = "margin:0;cursor:pointer;";
+            cb.addEventListener("change", () => {
+              if (cb.checked) selected.add(ext);
+              else selected.delete(ext);
+            });
+
+            row.appendChild(cb);
+            row.appendChild(document.createTextNode(ext));
+            box.appendChild(row);
+          }
+          content.appendChild(box);
+        }
+
+        const rowBtns = document.createElement("div");
+        rowBtns.style.cssText = "display:flex;gap:8px;align-items:center;";
+
+        const installBtn = document.createElement("button");
+        installBtn.textContent = "Install";
+        installBtn.style.cssText = btnStyle;
+        installBtn.addEventListener("click", async () => {
+          installBtn.disabled = true;
+          installBtn.textContent = "Installing...";
+          statusBar.textContent = "Installing...";
+          try {
+            const name = await installSpaFromZip(bytes, {
+              fileAssociations: [...selected],
+            });
+            statusBar.textContent = `Installed "${name}" successfully`;
+            back();
+          } catch (e) {
+            statusBar.textContent = `Error: ${(e as Error).message}`;
+            installBtn.disabled = false;
+            installBtn.textContent = "Install";
+          }
+        });
+        rowBtns.appendChild(installBtn);
+
+        const backBtn = document.createElement("button");
+        backBtn.textContent = "Back";
+        backBtn.style.cssText = ghostBtnStyle;
+        backBtn.addEventListener("click", back);
+        rowBtns.appendChild(backBtn);
+
+        content.appendChild(rowBtns);
+      })
+      .catch((e) => {
+        statusBar.textContent = `Error: ${(e as Error).message}`;
+        back();
+      });
+  }
+
   function showHostView() {
     content.innerHTML = "";
     activateTab(hostTab, [guestTab, installedTab]);
@@ -67,35 +175,25 @@ export default function run(hwnd: symbol) {
     fileInput.style.cssText = "margin-bottom:8px;font-size:11px;";
     content.appendChild(fileInput);
 
-    const installBtn = document.createElement("button");
-    installBtn.textContent = "Install Selected";
-    installBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;";
-    installBtn.disabled = true;
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next";
+    nextBtn.style.cssText = btnStyle;
+    nextBtn.disabled = true;
 
     fileInput.addEventListener("change", () => {
-      installBtn.disabled = !fileInput.files || fileInput.files.length === 0;
+      nextBtn.disabled = !fileInput.files || fileInput.files.length === 0;
     });
 
-    installBtn.addEventListener("click", async () => {
+    nextBtn.addEventListener("click", () => {
       const file = fileInput.files?.[0];
       if (!file) {
         statusBar.textContent = "Select a .spa file first";
         return;
       }
-      installBtn.disabled = true;
-      installBtn.textContent = "Installing...";
       statusBar.textContent = "Reading archive...";
-      try {
-        const name = await installSpaFromZip(await file.arrayBuffer());
-        statusBar.textContent = `Installed "${name}" successfully`;
-        fileInput.value = "";
-      } catch (e) {
-        statusBar.textContent = `Error: ${(e as Error).message}`;
-      }
-      installBtn.disabled = false;
-      installBtn.textContent = "Install Selected";
+      file.arrayBuffer().then((bytes) => showConfirmView(bytes, file.name, showHostView));
     });
-    content.appendChild(installBtn);
+    content.appendChild(nextBtn);
   }
 
   function showGuestView() {
@@ -109,15 +207,8 @@ export default function run(hwnd: symbol) {
 
     const selectBtn = document.createElement("button");
     selectBtn.textContent = "Browse VFS...";
-    selectBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;margin-bottom:8px;";
+    selectBtn.style.cssText = btnStyle;
     content.appendChild(selectBtn);
-
-    const installBtn = document.createElement("button");
-    installBtn.textContent = "Install Selected";
-    installBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;";
-    installBtn.style.display = "none";
-
-    let selectedPath: string | null = null;
 
     selectBtn.addEventListener("click", async () => {
       const path = await shellSelectFile({
@@ -125,33 +216,22 @@ export default function run(hwnd: symbol) {
         filter: { label: "SPA Packages", extensions: [".spa", ".zip"] },
       });
       if (path) {
-        selectedPath = path;
-        installBtn.style.display = "";
-        statusBar.textContent = `Selected: ${path}`;
-      }
-    });
-
-    installBtn.addEventListener("click", async () => {
-      if (!selectedPath) return;
-      installBtn.disabled = true;
-      installBtn.textContent = "Installing...";
-      statusBar.textContent = "Reading archive...";
-      try {
         const fs = new FileSystemAccess();
-        const blob = await fs.data.read(selectedPath);
-        if (!blob) throw new Error("Could not read file");
-        const name = await installSpaFromZip(await blob.arrayBuffer());
-        statusBar.textContent = `Installed "${name}" successfully`;
-        selectedPath = null;
-        installBtn.style.display = "none";
-      } catch (e) {
-        statusBar.textContent = `Error: ${(e as Error).message}`;
+        if (!fs.isFile(path)) {
+          statusBar.textContent = `Error: "${path}" does not exist`;
+          return;
+        }
+        statusBar.textContent = `Reading ${path}...`;
+        const blob = await fs.data.read(path);
+        if (!blob) {
+          statusBar.textContent = `Error: could not read "${path}"`;
+          return;
+        }
+        showConfirmView(await blob.arrayBuffer(), path.split("/").pop() || path, showGuestView);
       }
-      installBtn.disabled = false;
-      installBtn.textContent = "Install Selected";
     });
 
-    content.appendChild(installBtn);
+    content.appendChild(selectBtn);
   }
 
   function showInstalledView() {

@@ -6,5 +6,6 @@
   "entryPoint": "run",
   "entryModule": "main.ts",
   "fileOpener": "openFile",
-  "fileOpenerModule": "main.ts"
+  "fileOpenerModule": "main.ts",
+  "fileassoc": [".txt", ".md", ".log"]
 }
