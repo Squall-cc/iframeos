@@ -1,0 +1,10 @@
+{
+  "name": "Demo SPA",
+  "key": "demo-spa",
+  "version": "1.0.0",
+  "description": "A demo SPA with multiple entry points for testing the app picker",
+  "entryPoint": "run",
+  "entryModule": "main.ts",
+  "fileOpener": "openFile",
+  "fileOpenerModule": "main.ts"
+}

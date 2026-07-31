@@ -24,6 +24,9 @@ import { editFile } from "../SysApps/editor";
 
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
+import { getSpaEntryMethods, launchSpaEntry } from "./SpaApp";
+
+export { installSpaFromZip } from "./SpaApp";
 
 export * from "../Core/systems";
 export * from "./RegistryApi";
@@ -668,6 +671,12 @@ async function getAppEntryMethods(appKey: string): Promise<string[]> {
     return methods;
   }
 
+  const isNewStyle =
+    !!manifest && /^[A-Za-z_$][\w$]*$/.test((manifest as { entryPoint?: string }).entryPoint ?? "");
+  if (isNewStyle) {
+    return getSpaEntryMethods(appKey);
+  }
+
   const fs = new FileSystemAccess();
   const methods = new Set<string>();
 
@@ -726,6 +735,12 @@ async function launchAppEntry(appKey: string, entryFn: string, filename?: string
       }
     }
     return false;
+  }
+
+  const isNewStyle =
+    !!manifest && /^[A-Za-z_$][\w$]*$/.test((manifest as { entryPoint?: string }).entryPoint ?? "");
+  if (isNewStyle) {
+    return launchSpaEntry(appKey, entryFn, filename);
   }
 
   const fs = new FileSystemAccess();

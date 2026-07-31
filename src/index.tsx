@@ -3,7 +3,7 @@ import { render } from "solid-js/web";
 import "solid-devtools";
 import * as appStoreApi from "./Apis/AppStore";
 import * as fileSystemApi from "./Apis/FileSystemApi";
-import { WindowHandle, shellOpen, shellOpenWithPicker, shellModal, shellSelectFile, getAllInstalledApps, launchSpaApp, spawn } from "./Apis/iSApi";
+import { WindowHandle, shellOpen, shellOpenWithPicker, shellModal, shellSelectFile, getAllInstalledApps, launchSpaApp, spawn, installSpaFromZip } from "./Apis/iSApi";
 import * as launcher from "./Apis/Launcher";
 import * as registryApi from "./Apis/RegistryApi";
 import * as scramjetApi from "./Apis/scramjet";
@@ -34,6 +34,7 @@ declare global {
       shellSelectFile: typeof shellSelectFile;
       getAllInstalledApps: typeof getAllInstalledApps;
       launchSpaApp: typeof launchSpaApp;
+      installSpaFromZip: typeof installSpaFromZip;
     };
     WindowHandle: typeof WindowHandle;
     spawn: typeof spawn;
@@ -59,6 +60,7 @@ const API = {
   shellSelectFile,
   getAllInstalledApps,
   launchSpaApp,
+  installSpaFromZip,
 };
 
 // make global
