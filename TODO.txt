@@ -1,8 +1,0 @@
-todo:
-win32 stuff ported
-process manager
-
-integrate mrrowisp or python wisp server
-setup http server with https://github.com/danyalmh/Dora and look into quic http/3 support
-
-fstransport.ts line 28

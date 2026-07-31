@@ -183,9 +183,24 @@ export async function installRawApp(
   return name;
 }
 
+// the directory the manifest.json lives in, as a stripped path prefix ("" when
+// the manifest is at the archive root). packages are often zipped inside a
+// folder named after the app (e.g. rawtest/manifest.json), which would make the
+// declared entryModule/handlerModule paths un-findable after install.
+function manifestWrapperDir(manifestName: string): string {
+  const parts = manifestName
+    .replace(/^\/+/, "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+}
+
 // installs a raw app from a .zip/.spa package: finds manifest.json (even when
 // the archive wraps everything in a folder), reads every other entry as a text
-// file, and installs them into the VFS under /iSi/apps/{key}.
+// file, strips the wrapper directory so entryModule paths resolve, and installs
+// them into the VFS under /iSi/apps/{key}.
 export async function installRawAppFromZip(
   bytes: ArrayBuffer,
   options?: { fileAssociations?: string[] },
@@ -210,11 +225,16 @@ export async function installRawAppFromZip(
     );
   }
 
+  const wrapper = manifestWrapperDir(manifestEntry.name);
+  const prefix = wrapper ? `${wrapper}/` : "";
+
   const files: Record<string, string> = {};
   for (const entry of entries) {
     const clean = entry.name.replace(/^\/+/, "").replace(/\\/g, "/");
     if (!clean || clean.toLowerCase().endsWith("manifest.json")) continue;
-    files[clean] = new TextDecoder().decode(entry.data);
+    const rel = prefix && clean.startsWith(prefix) ? clean.slice(prefix.length) : clean;
+    if (!rel) continue;
+    files[rel] = new TextDecoder().decode(entry.data);
   }
 
   return installRawApp(files, manifest, options, onProgress);

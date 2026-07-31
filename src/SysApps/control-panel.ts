@@ -52,17 +52,17 @@ export default function run(hwnd: symbol) {
 
   const resetDesc = document.createElement("div");
   resetDesc.style.cssText = "font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px;";
-  resetDesc.textContent = "Removes all installed SPA apps and resets file associations to defaults. Built-in apps (editor, file explorer, etc.) will remain.";
+  resetDesc.textContent = "Removes all installed SPA and raw apps, clears the filesystem back to the default directories, and resets file associations to defaults. Built-in apps (editor, file explorer, etc.) will remain.";
   resetSection.appendChild(resetDesc);
 
   const resetBtn = document.createElement("button");
   resetBtn.textContent = "Reset to Defaults";
   resetBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(200,0,0,0.5);border-radius:2px;background:rgba(200,0,0,0.1);font-weight:600;align-self:flex-start;";
   resetBtn.addEventListener("click", async () => {
-    const confirm = await shellModal("yesno", hwnd, "Confirm Reset", "This will remove all installed SPA apps and reset file associations to system defaults. Built-in apps will not be affected. Continue?");
+    const confirm = await shellModal("yesno", hwnd, "Confirm Reset", "This will remove all installed SPA and raw apps, wipe the filesystem back to its default directories, and reset file associations to system defaults. Built-in apps will not be affected. Continue?");
     if (confirm !== "yes") return;
 
-    const confirm2 = await shellModal("yesno", hwnd, "Are You Sure?", "All installed SPA apps will be permanently deleted. This cannot be undone.");
+    const confirm2 = await shellModal("yesno", hwnd, "Are You Sure?", "All installed apps and user files will be permanently deleted. This cannot be undone.");
     if (confirm2 !== "yes") return;
 
     resetBtn.disabled = true;
@@ -84,7 +84,6 @@ export default function run(hwnd: symbol) {
         "hi", "hello", "draw", "launch", "browser",
         "editor", "registry-editor", "app-installer",
         "file-explorer", "test-app", "control-panel",
-        "raw-test",
       ];
 
       for (const rec of allRecs) {
@@ -96,9 +95,7 @@ export default function run(hwnd: symbol) {
         }
       }
 
-      await reg._write("InternalSystem/AppIndex", "list", [
-        { key: "raw-test", name: "Raw Test", version: "1.0.0", description: "Plain HTML test app" },
-      ]);
+      await reg._write("InternalSystem/AppIndex", "list", []);
 
       for (const rec of allRecs) {
         if (rec.path.startsWith(CLASSES_ROOT_PREFIX)) {
@@ -110,25 +107,22 @@ export default function run(hwnd: symbol) {
       await reg._write(`${CLASSES_ROOT_PREFIX}/.txt`, "entry", "editFile");
       await reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "app", "test-app");
       await reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "entry", "run");
-      await reg._write(`${CLASSES_ROOT_PREFIX}/.test1`, "app", "raw-test");
-      await reg._write(`${CLASSES_ROOT_PREFIX}/.test1`, "entry", "handler");
-      await reg._write(`${CLASSES_ROOT_PREFIX}/.test2`, "app", "raw-test");
-      await reg._write(`${CLASSES_ROOT_PREFIX}/.test2`, "entry", "handler");
 
       const { FileSystemAccess } = await import("../Apis/FileSystemApi");
       const fs = new FileSystemAccess();
-      const appDir = "/iSi/apps";
-      const entries = fs.listDirectory(appDir).filter((p) => p !== appDir);
-      for (const entry of entries) {
-        if (entry === "/iSi/apps/raw-test") continue;
-        if (fs.isDirectory(entry)) {
-          fs.deleteDirectoryRecursive(entry);
-        } else {
-          fs.deleteFile(entry);
-        }
-      }
+      fs.resetToDirectories([
+        "/documents",
+        "/downloads",
+        "/iSi",
+        "/iSi/theming",
+        "/iSi/apps",
+        "/iSi/js",
+        "/pictures",
+        "/videos",
+        "/3dobjects",
+      ]);
 
-      await shellModal("info", hwnd, "Reset Complete", "System has been reset to defaults. Only built-in apps and the default .txt / .test file associations remain.");
+      await shellModal("info", hwnd, "Reset Complete", "System has been reset to defaults. Only built-in apps, the default filesystem directories, and the default .txt / .test file associations remain.");
     } catch (e) {
       await shellModal("error", hwnd, "Reset Failed", `An error occurred: ${(e as Error).message}`);
     }

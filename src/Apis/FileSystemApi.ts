@@ -87,6 +87,10 @@ class MetadataStore {
     return e.children || [];
   }
 
+  getAllPaths(): string[] {
+    return Object.keys(this.meta.entries);
+  }
+
   addChild(dirPath: string, childPath: string) {
     const dirLookup = normalizeLookup(dirPath);
     const childLookup = normalizeLookup(childPath);
@@ -458,6 +462,32 @@ export class FileSystemAccess {
       (async () => {
         await this.data.rename(oldDataPath, newDataPath);
       })();
+    }
+  };
+
+  // deletes every file and directory (including orphaned entries that are no
+  // longer reachable from "/") except the given default directories, then
+  // recreates those directories. used by the system reset.
+  resetToDirectories = (defaultDirs: string[]): void => {
+    const keep = new Set<string>(["/"]);
+    for (const dir of defaultDirs) {
+      const n = normalizePath(dir);
+      if (!n) continue;
+      keep.add(n);
+      keep.add(n.toLowerCase());
+    }
+
+    for (const lookup of this.meta.getAllPaths()) {
+      if (keep.has(lookup)) continue;
+      const entry = this.meta.getEntry(lookup);
+      if (!entry) continue;
+      if (entry.type === "file") this.deleteFile(entry.path);
+      else this.deleteDirectoryRecursive(entry.path);
+    }
+
+    for (const dir of defaultDirs) {
+      const n = normalizePath(dir);
+      if (n && !this.exists(n)) this.createDirectory(n);
     }
   };
 }
