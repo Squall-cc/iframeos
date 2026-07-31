@@ -13,7 +13,7 @@
 ## Credits
 
 `wallpaper.webp` credits to [u/maxik34](https://www.reddit.com/r/Windows_Redesign/comments/1qt142h/i_recreated_windows_7_wallpapers_from_scratch/)
-`image.png` is a stock image, search "man riding woman"
+`manridingwoman.png` is a stock image, search "man riding woman"
 
 
 https://github.com/KasimAhmic/web-aero/blob/main/src/attributes/resizable.ts is our NEW skidded resizing logic

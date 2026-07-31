@@ -3,7 +3,7 @@
   width: var(--panel-size);
   min-width: var(--panel-size);
   height: var(--panel-size);
-  background-image: url(../Assets/startButton.png);
+  background-image: url(../Assets/iconsUI/startButton.png);
   background-position: center;
   background-size: calc(var(--panel-size) - 1px);
   background-repeat: no-repeat;
