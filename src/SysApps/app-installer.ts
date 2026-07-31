@@ -1,70 +1,7 @@
 import { FileSystemAccess } from "../Apis/FileSystemApi";
-import { getAllInstalledApps, launchSpaApp, shellModal, shellSelectFile } from "../Apis/iSApi";
-import { RegistryInstanceAccess } from "../Apis/RegistryApi";
+import { getAllInstalledApps, launchSpaApp, shellSelectFile } from "../Apis/iSApi";
+import { installSpaFromZip } from "../Apis/SpaApp";
 import { setContent, setMinSize } from "../Core/windowhelpers";
-
-const APP_INDEX_PATH = "InternalSystem/AppIndex";
-const APPS_REG_PREFIX = "InternalSystem/Apps";
-
-async function installSpa(jsonText: string): Promise<string> {
-  let manifest: Record<string, unknown>;
-  try {
-    manifest = JSON.parse(jsonText);
-  } catch {
-    throw new Error("Invalid JSON in .spa file");
-  }
-
-  const name = manifest["name"] as string | undefined;
-  const key = manifest["key"] as string | undefined;
-  const version = manifest["version"] as string | undefined;
-  const description = manifest["description"] as string | undefined;
-  const entryPoint = manifest["entryPoint"] as string | undefined;
-  const fileOpener = manifest["fileOpener"] as string | undefined;
-
-  if (!key || !name || !entryPoint) {
-    throw new Error(".spa manifest must include 'key', 'name', and 'entryPoint'");
-  }
-
-  const fs = new FileSystemAccess();
-  const appDir = `/iSi/apps/${key}`;
-
-  if (!fs.exists(appDir)) {
-    fs.createDirectory(appDir);
-  }
-
-  const entryHandle = fs.openFile(`${appDir}/entry.js`);
-  entryHandle.write(entryPoint);
-
-  if (fileOpener) {
-    const openerHandle = fs.openFile(`${appDir}/opener.js`);
-    openerHandle.write(fileOpener);
-  }
-
-  const reg = new RegistryInstanceAccess();
-  await reg._write(`${APPS_REG_PREFIX}/${key}`, "manifest", {
-    name,
-    key,
-    version: version || "1.0.0",
-    description: description || "",
-    type: "spa",
-    hasFileOpener: !!fileOpener,
-  });
-
-  const indexRecord = await reg._load(APP_INDEX_PATH);
-  const existing = indexRecord?.values["list"] as Array<{ key: string; name: string; version: string; description: string }> | undefined;
-  const list = existing ?? [];
-  if (!list.some((a) => a.key === key)) {
-    list.push({
-      key,
-      name,
-      version: version || "1.0.0",
-      description: description || "",
-    });
-  }
-  await reg._write(APP_INDEX_PATH, "list", list);
-
-  return name;
-}
 
 export default function run(hwnd: symbol) {
   setMinSize(hwnd, 550, 420);
@@ -80,14 +17,9 @@ export default function run(hwnd: symbol) {
   const tabs = document.createElement("div");
   tabs.style.cssText = "display:flex;gap:4px;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,0.1);";
 
-  const pasteTab = document.createElement("button");
-  pasteTab.textContent = "Paste JSON";
-  pasteTab.style.cssText = "padding:4px 10px;font-size:11px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px 2px 0 0;background:#fff;border-bottom:2px solid #0078d4;";
-  tabs.appendChild(pasteTab);
-
   const hostTab = document.createElement("button");
   hostTab.textContent = "From Host";
-  hostTab.style.cssText = "padding:4px 10px;font-size:11px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px 2px 0 0;background:rgba(0,0,0,0.04);border-bottom:2px solid transparent;";
+  hostTab.style.cssText = "padding:4px 10px;font-size:11px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px 2px 0 0;background:#fff;border-bottom:2px solid #0078d4;";
   tabs.appendChild(hostTab);
 
   const guestTab = document.createElement("button");
@@ -120,57 +52,18 @@ export default function run(hwnd: symbol) {
     }
   }
 
-  function showPasteView() {
-    content.innerHTML = "";
-    activateTab(pasteTab, [hostTab, guestTab, installedTab]);
-
-    const label = document.createElement("div");
-    label.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:4px;";
-    label.textContent = "Paste .spa JSON content below:";
-    content.appendChild(label);
-
-    const textarea = document.createElement("textarea");
-    textarea.style.cssText = "width:100%;flex:1;box-sizing:border-box;font-family:monospace;font-size:12px;padding:6px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;resize:none;";
-    textarea.placeholder = '{\n  "name": "My App",\n  "key": "my-app",\n  "version": "1.0.0",\n  "description": "...",\n  "entryPoint": "function run(hwnd) { ... }",\n  "fileOpener": "function openFile(path, hwnd) { ... }"\n}';
-    content.appendChild(textarea);
-
-    const installBtn = document.createElement("button");
-    installBtn.textContent = "Install App";
-    installBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;";
-    installBtn.addEventListener("click", async () => {
-      const json = textarea.value.trim();
-      if (!json) {
-        statusBar.textContent = "Please paste .spa JSON content";
-        return;
-      }
-      installBtn.disabled = true;
-      installBtn.textContent = "Installing...";
-      statusBar.textContent = "Installing...";
-      try {
-        const name = await installSpa(json);
-        statusBar.textContent = `Installed "${name}" successfully`;
-        textarea.value = "";
-      } catch (e) {
-        statusBar.textContent = `Error: ${(e as Error).message}`;
-      }
-      installBtn.disabled = false;
-      installBtn.textContent = "Install App";
-    });
-    content.appendChild(installBtn);
-  }
-
   function showHostView() {
     content.innerHTML = "";
-    activateTab(hostTab, [pasteTab, guestTab, installedTab]);
+    activateTab(hostTab, [guestTab, installedTab]);
 
     const label = document.createElement("div");
     label.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:8px;";
-    label.textContent = "Load a .spa file from the host machine:";
+    label.textContent = "Load a .spa (zip) package from the host machine:";
     content.appendChild(label);
 
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = ".spa,.json";
+    fileInput.accept = ".spa,.zip";
     fileInput.style.cssText = "margin-bottom:8px;font-size:11px;";
     content.appendChild(fileInput);
 
@@ -191,10 +84,9 @@ export default function run(hwnd: symbol) {
       }
       installBtn.disabled = true;
       installBtn.textContent = "Installing...";
-      statusBar.textContent = "Reading file...";
+      statusBar.textContent = "Reading archive...";
       try {
-        const text = await file.text();
-        const name = await installSpa(text);
+        const name = await installSpaFromZip(await file.arrayBuffer());
         statusBar.textContent = `Installed "${name}" successfully`;
         fileInput.value = "";
       } catch (e) {
@@ -208,11 +100,11 @@ export default function run(hwnd: symbol) {
 
   function showGuestView() {
     content.innerHTML = "";
-    activateTab(guestTab, [pasteTab, hostTab, installedTab]);
+    activateTab(guestTab, [hostTab, installedTab]);
 
     const label = document.createElement("div");
     label.style.cssText = "font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:8px;";
-    label.textContent = "Select a .spa file from the guest (VFS):";
+    label.textContent = "Select a .spa (zip) package from the guest (VFS):";
     content.appendChild(label);
 
     const selectBtn = document.createElement("button");
@@ -230,7 +122,7 @@ export default function run(hwnd: symbol) {
     selectBtn.addEventListener("click", async () => {
       const path = await shellSelectFile({
         title: "Select .spa file",
-        filter: { label: "SPA Files", extensions: [".spa", ".json"] },
+        filter: { label: "SPA Packages", extensions: [".spa", ".zip"] },
       });
       if (path) {
         selectedPath = path;
@@ -243,13 +135,12 @@ export default function run(hwnd: symbol) {
       if (!selectedPath) return;
       installBtn.disabled = true;
       installBtn.textContent = "Installing...";
-      statusBar.textContent = "Reading file...";
+      statusBar.textContent = "Reading archive...";
       try {
         const fs = new FileSystemAccess();
-        const handle = fs.openFile(selectedPath);
-        const text = await handle.read();
-        if (!text) throw new Error("Could not read file");
-        const name = await installSpa(text);
+        const blob = await fs.data.read(selectedPath);
+        if (!blob) throw new Error("Could not read file");
+        const name = await installSpaFromZip(await blob.arrayBuffer());
         statusBar.textContent = `Installed "${name}" successfully`;
         selectedPath = null;
         installBtn.style.display = "none";
@@ -265,7 +156,7 @@ export default function run(hwnd: symbol) {
 
   function showInstalledView() {
     content.innerHTML = "";
-    activateTab(installedTab, [pasteTab, hostTab, guestTab]);
+    activateTab(installedTab, [hostTab, guestTab]);
 
     const refreshBtn = document.createElement("button");
     refreshBtn.textContent = "Refresh";
@@ -321,12 +212,11 @@ export default function run(hwnd: symbol) {
     loadList();
   }
 
-  pasteTab.addEventListener("click", showPasteView);
   hostTab.addEventListener("click", showHostView);
   guestTab.addEventListener("click", showGuestView);
   installedTab.addEventListener("click", showInstalledView);
 
-  showPasteView();
+  showHostView();
 
   setContent(hwnd, container);
 }

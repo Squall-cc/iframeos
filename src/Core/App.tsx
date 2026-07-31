@@ -71,7 +71,10 @@ const App: Component = () => {
   for (const app of BUILTIN_APPS) {
     const path = `${APPS_REG_PREFIX}/${app.key}`;
     reg._load(path).then((existing) => {
-      if (!existing) {
+      const manifest = existing?.values["manifest"] as
+        | { type?: string; hasFileOpener?: boolean }
+        | undefined;
+      if (!existing || manifest?.type !== "builtin") {
         reg._write(path, "manifest", {
           name: app.name,
           key: app.key,
