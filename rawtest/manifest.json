@@ -1,0 +1,10 @@
+{
+  "name": "Raw Test",
+  "key": "raw-test",
+  "version": "1.0.0",
+  "description": "A raw HTML app loaded from the virtual filesystem, registers .test1 and .test2",
+  "type": "raw",
+  "entryModule": "index.html",
+  "handlerModule": "handler.html",
+  "fileassoc": [".test1", ".test2"]
+}

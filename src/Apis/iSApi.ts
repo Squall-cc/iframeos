@@ -23,10 +23,12 @@ import {
 import { editFile } from "../SysApps/editor";
 
 import { FileSystemAccess } from "./FileSystemApi";
+import { getRawEntryMethods, launchRawEntry } from "./RawApp";
 import { RegistryInstanceAccess } from "./RegistryApi";
 import { getSpaEntryMethods, launchSpaEntry } from "./SpaApp";
 
 export { installSpaFromZip } from "./SpaApp";
+export { installRawApp, installRawAppFromZip } from "./RawApp";
 
 export * from "../Core/systems";
 export * from "./RegistryApi";
@@ -171,6 +173,19 @@ export async function shellOpenWithPicker(filename: string): Promise<boolean> {
   return result.handled;
 }
 
+// always shows the "open with" app picker, unlike shellOpenWithPicker which
+// only falls back to it when no association is registered.
+export async function shellOpenWith(filename: string): Promise<boolean> {
+  const extIdx = filename.lastIndexOf(".");
+  const ext = extIdx === -1 ? "" : filename.slice(extIdx).toLowerCase();
+  const selected = await showAppPicker(
+    `Open "${filename.split("/").pop()}" with:`,
+    ext,
+  );
+  if (!selected) return false;
+  return launchAppEntry(selected.appKey, selected.entry, filename);
+}
+
 export type ShellModalType = "error" | "info" | "warn" | "yesno" | "abortretrycancel" | "retrycancel";
 
 export type ShellModalResult = "ok" | "abort" | "retry" | "cancel" | "yes" | "no";
@@ -245,6 +260,152 @@ export function shellModal(
   });
 }
 
+export type ShellAskFieldType =
+  | "text"
+  | "number"
+  | "email"
+  | "password"
+  | "search"
+  | "tel"
+  | "url"
+  | "date"
+  | "time"
+  | "datetime-local"
+  | "month"
+  | "week"
+  | "range"
+  | "color";
+
+export interface ShellAskField {
+  type: ShellAskFieldType;
+  name: string;
+  label?: string;
+  value?: string;
+  placeholder?: string;
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
+  required?: boolean;
+}
+
+export type ShellAskButtons = "ok" | "okcancel";
+
+export interface ShellAskResult {
+  button: "ok" | "cancel";
+  values: Record<string, string>;
+}
+
+// like shellModal but with input boxes. every text-entry html input type is
+// supported (text, number, email, password, search, tel, url, date, time,
+// datetime-local, month, week, range, color). the buttons are "ok" or
+// "okcancel" and the result is the button that was clicked plus the values
+// that were entered, as separate fields.
+export function shellAsk(
+  fields: ShellAskField[],
+  title: string,
+  content?: string,
+  options?: { buttons?: ShellAskButtons },
+): Promise<ShellAskResult> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+
+    const dialog = document.createElement("div");
+    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:340px;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;";
+
+    const titleEl = document.createElement("div");
+    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px;";
+    titleEl.textContent = title;
+    dialog.appendChild(titleEl);
+
+    if (content) {
+      const contentEl = document.createElement("div");
+      contentEl.style.cssText = "margin-bottom:12px;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;";
+      contentEl.textContent = content;
+      dialog.appendChild(contentEl);
+    }
+
+    const fieldInputs: Record<string, HTMLInputElement> = {};
+
+    const fieldsEl = document.createElement("div");
+    fieldsEl.style.cssText = "display:flex;flex-direction:column;gap:8px;margin-bottom:16px;";
+
+    for (const field of fields) {
+      const row = document.createElement("label");
+      row.style.cssText = "display:flex;flex-direction:column;gap:3px;font-size:11px;";
+
+      const label = document.createElement("span");
+      label.textContent = field.label ?? field.name;
+      row.appendChild(label);
+
+      const input = document.createElement("input");
+      input.type = field.type;
+      input.name = field.name;
+      if (field.value !== undefined) input.value = field.value;
+      if (field.placeholder !== undefined) input.placeholder = field.placeholder;
+      if (field.min !== undefined) input.min = String(field.min);
+      if (field.max !== undefined) input.max = String(field.max);
+      if (field.step !== undefined) input.step = String(field.step);
+      if (field.required) input.required = true;
+      input.style.cssText = "padding:4px 6px;font-size:12px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;font-family:Segoe UI,sans-serif;";
+      row.appendChild(input);
+      fieldsEl.appendChild(row);
+      fieldInputs[field.name] = input;
+    }
+
+    dialog.appendChild(fieldsEl);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+
+    const okBtn = document.createElement("button");
+    okBtn.textContent = "OK";
+    okBtn.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;font-size:11px;";
+    okBtn.addEventListener("click", () => {
+      for (const field of fields) {
+        if (field.required && !fieldInputs[field.name].value) {
+          fieldInputs[field.name].focus();
+          return;
+        }
+      }
+      const values: Record<string, string> = {};
+      for (const field of fields) {
+        values[field.name] = fieldInputs[field.name].value;
+      }
+      overlay.remove();
+      resolve({ button: "ok", values });
+    });
+    btnRow.appendChild(okBtn);
+
+    function cancel() {
+      overlay.remove();
+      resolve({ button: "cancel", values: {} });
+    }
+
+    if ((options?.buttons ?? "ok") === "okcancel") {
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
+      cancelBtn.addEventListener("click", cancel);
+      btnRow.appendChild(cancelBtn);
+    }
+
+    dialog.appendChild(btnRow);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    for (const input of Object.values(fieldInputs)) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") okBtn.click();
+        if (e.key === "Escape") cancel();
+      });
+    }
+
+    const first = fields[0] ? fieldInputs[fields[0].name] : undefined;
+    first?.focus();
+  });
+}
+
 function showAppPicker(
   title: string,
   ext: string,
@@ -283,7 +444,7 @@ function showAppPicker(
           { key: "browser", name: "browser" },
           { key: "editor", name: "Text Editor" },
           { key: "registry-editor", name: "Registry Editor" },
-          { key: "app-installer", name: "App Installer" },
+          { key: "app-installer", name: "App Manager" },
           { key: "file-explorer", name: "File Explorer" },
           { key: "test-app", name: "Test App" },
         ];
@@ -380,8 +541,25 @@ export interface ShellSelectFileOptions {
   save?: boolean;
 }
 
+export interface ShellSelectDirOptions {
+  title?: string;
+}
+
 export async function shellSelectFile(
   options?: ShellSelectFileOptions,
+): Promise<string | null> {
+  return openShellPicker(options ?? {}, false);
+}
+
+export async function shellSelectDir(
+  options?: ShellSelectDirOptions,
+): Promise<string | null> {
+  return openShellPicker(options ?? {}, true);
+}
+
+async function openShellPicker(
+  options: ShellSelectFileOptions,
+  directory: boolean,
 ): Promise<string | null> {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
@@ -392,7 +570,7 @@ export async function shellSelectFile(
 
     const titleEl = document.createElement("div");
     titleEl.style.cssText = "font-weight:600;margin-bottom:8px;";
-    titleEl.textContent = options?.title ?? "Select a file";
+    titleEl.textContent = options?.title ?? (directory ? "Select a folder" : "Select a file");
     dialog.appendChild(titleEl);
 
     const pathDisplay = document.createElement("div");
@@ -424,6 +602,7 @@ export async function shellSelectFile(
 
     const filterSelect = document.createElement("select");
     filterSelect.style.cssText = "flex:1;padding:2px 4px;font-size:11px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;";
+    if (directory) filterSelect.style.display = "none";
 
     const allFilter = document.createElement("option");
     allFilter.value = "*";
@@ -458,7 +637,7 @@ export async function shellSelectFile(
 
     const fileNameLabel = document.createElement("span");
     fileNameLabel.style.cssText = "font-size:11px;white-space:nowrap;";
-    fileNameLabel.textContent = "File name:";
+    fileNameLabel.textContent = directory ? "Folder:" : "File name:";
     bottomRow.appendChild(fileNameLabel);
 
     const fileNameInput = document.createElement("input");
@@ -467,7 +646,7 @@ export async function shellSelectFile(
     bottomRow.appendChild(fileNameInput);
 
     const okBtn = document.createElement("button");
-    okBtn.textContent = options?.save ? "Save" : "Open";
+    okBtn.textContent = directory ? "Select" : options?.save ? "Save" : "Open";
     okBtn.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;font-size:11px;";
     bottomRow.appendChild(okBtn);
 
@@ -497,6 +676,7 @@ export async function shellSelectFile(
     }
 
     function matchesFilter(name: string): boolean {
+      if (directory) return true;
       const val = filterSelect.value;
       if (val === "*") return true;
       const exts = val.split(",");
@@ -563,13 +743,21 @@ export async function shellSelectFile(
 
         row.addEventListener("click", () => {
           document.querySelectorAll("#sel-file-list > div").forEach((el) => (el as HTMLElement).style.background = "");
-          if (!isDir && matchesFilter(name)) {
-            selectedFile = entry;
-            fileNameInput.value = name;
-            row.style.background = "rgba(0,100,200,0.2)";
-          }
-          if (isDir) {
-            row.style.background = "rgba(0,100,200,0.2)";
+          if (directory) {
+            if (isDir) {
+              selectedFile = entry;
+              fileNameInput.value = name;
+              row.style.background = "rgba(0,100,200,0.2)";
+            }
+          } else {
+            if (!isDir && matchesFilter(name)) {
+              selectedFile = entry;
+              fileNameInput.value = name;
+              row.style.background = "rgba(0,100,200,0.2)";
+            }
+            if (isDir) {
+              row.style.background = "rgba(0,100,200,0.2)";
+            }
           }
         });
         row.addEventListener("dblclick", () => {
@@ -598,6 +786,10 @@ export async function shellSelectFile(
         return null;
       }
       const fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
+      if (directory && !fs.isDirectory(fullPath)) {
+        shellModal("info", Symbol(), "Not a Folder", `"${fullPath}" is not a folder.`);
+        return null;
+      }
       return fullPath;
     }
 
@@ -662,6 +854,10 @@ async function getAppEntryMethods(appKey: string): Promise<string[]> {
     const methods = ["run", "openFile"];
     if (appKey === "editor") methods.push("editFile");
     return methods;
+  }
+
+  if (appType === "raw") {
+    return getRawEntryMethods(appKey);
   }
 
   const isNewStyle =
@@ -730,6 +926,10 @@ async function launchAppEntry(appKey: string, entryFn: string, filename?: string
     return false;
   }
 
+  if (appType === "raw") {
+    return launchRawEntry(appKey, entryFn, filename);
+  }
+
   const isNewStyle =
     !!manifest && /^[A-Za-z_$][\w$]*$/.test((manifest as { entryPoint?: string }).entryPoint ?? "");
   if (isNewStyle) {
@@ -781,6 +981,17 @@ export async function launchSpaApp(appKey: string): Promise<boolean> {
   return launchAppEntry(appKey, entryFn);
 }
 
+export async function launchRawApp(appKey: string): Promise<boolean> {
+  return launchAppEntry(appKey, "run");
+}
+
+export async function getInstalledAppType(appKey: string): Promise<string> {
+  const reg = new RegistryInstanceAccess();
+  const record = await reg._load(`${APPS_REG_PREFIX}/${appKey}`);
+  const manifest = record?.values["manifest"] as { type?: string } | undefined;
+  return manifest?.type || "spa";
+}
+
 export async function getAllInstalledApps() {
   const reg = new RegistryInstanceAccess();
 
@@ -795,4 +1006,129 @@ export async function registerClassRoot(ext: string, appKey: string, entry: stri
   const reg = new RegistryInstanceAccess();
   await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", appKey);
   await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", entry);
+}
+
+function normalizeExtension(ext: string): string {
+  const e = ext.trim().toLowerCase();
+  if (!e) return "";
+  return e.startsWith(".") ? e : "." + e;
+}
+
+export interface InstalledAppInfo {
+  key: string;
+  name: string;
+  version: string;
+  description: string;
+  type: string;
+  entryPoint?: string;
+  entryModule?: string;
+  handlerModule?: string;
+  fileOpener?: string;
+  hasFileOpener: boolean;
+  fileassoc: string[];
+}
+
+export async function getAppInfo(appKey: string): Promise<InstalledAppInfo | null> {
+  const reg = new RegistryInstanceAccess();
+  const record = await reg._load(`${APPS_REG_PREFIX}/${appKey}`);
+  if (!record) return null;
+
+  const manifest = record.values["manifest"] as
+    | (Record<string, unknown> & {
+        type?: string;
+        entryPoint?: string;
+        entryModule?: string;
+        handlerModule?: string;
+        fileOpener?: string;
+        hasFileOpener?: boolean;
+        fileassoc?: unknown;
+      })
+    | undefined;
+  if (!manifest) return null;
+
+  const rawAssoc = Array.isArray(manifest.fileassoc) ? (manifest.fileassoc as unknown[]) : [];
+  return {
+    key: (manifest.key as string) ?? appKey,
+    name: (manifest.name as string) ?? appKey,
+    version: (manifest.version as string) ?? "?",
+    description: (manifest.description as string) ?? "",
+    type: manifest.type ?? "spa",
+    entryPoint: manifest.entryPoint,
+    entryModule: manifest.entryModule,
+    handlerModule: manifest.handlerModule,
+    fileOpener: manifest.fileOpener,
+    hasFileOpener: !!manifest.hasFileOpener,
+    fileassoc: rawAssoc
+      .filter((e): e is string => typeof e === "string")
+      .map(normalizeExtension)
+      .filter(Boolean),
+  };
+}
+
+// removes an installed app: its file associations, its AppIndex entry, its
+// registry record, and its files under /iSi/apps/{key}
+export async function uninstallApp(appKey: string): Promise<void> {
+  const info = await getAppInfo(appKey);
+  if (!info) throw new Error(`app "${appKey}" is not installed`);
+  if (info.type === "builtin") {
+    throw new Error(`"${info.name}" is a built-in app and cannot be uninstalled`);
+  }
+
+  const reg = new RegistryInstanceAccess();
+
+  for (const ext of info.fileassoc) {
+    const rec = await reg._load(`${CLASSES_ROOT_PREFIX}/${ext}`);
+    if (rec && rec.values["app"] === appKey) {
+      await reg._deleteKey(`${CLASSES_ROOT_PREFIX}/${ext}`);
+    }
+  }
+
+  const indexRecord = await reg._load(APP_INDEX_PATH);
+  const list = (indexRecord?.values["list"] as Array<{ key: string }> | undefined) ?? [];
+  await reg._write(
+    APP_INDEX_PATH,
+    "list",
+    list.filter((a) => a.key !== appKey),
+  );
+
+  await reg._deleteKey(`${APPS_REG_PREFIX}/${appKey}`);
+
+  const fs = new FileSystemAccess();
+  if (fs.exists(`/iSi/apps/${appKey}`)) {
+    fs.deleteDirectoryRecursive(`/iSi/apps/${appKey}`);
+  }
+}
+
+// registers or unregisters the given extensions for an app. extensions not in
+// the list that were previously registered to this app are unregistered.
+// the manifest's "fileassoc" (the app's declared capabilities) is left
+// untouched so Configure can re-add a removed type later.
+export async function setFileAssociations(appKey: string, extensions: string[]): Promise<void> {
+  const info = await getAppInfo(appKey);
+  if (!info) throw new Error(`app "${appKey}" is not installed`);
+
+  const entry =
+    info.type === "raw"
+      ? info.handlerModule
+        ? "handler"
+        : undefined
+      : info.fileOpener ?? (info.hasFileOpener ? "handler" : undefined);
+
+  const reg = new RegistryInstanceAccess();
+
+  const desired = new Set(extensions.map(normalizeExtension).filter(Boolean));
+  const allExts = new Set<string>([...desired, ...info.fileassoc]);
+
+  for (const ext of allExts) {
+    const rec = await reg._load(`${CLASSES_ROOT_PREFIX}/${ext}`);
+    const registeredToThisApp = !!rec && rec.values["app"] === appKey;
+    if (desired.has(ext)) {
+      if (!registeredToThisApp && entry) {
+        await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", appKey);
+        await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", entry);
+      }
+    } else if (registeredToThisApp) {
+      await reg._deleteKey(`${CLASSES_ROOT_PREFIX}/${ext}`);
+    }
+  }
 }

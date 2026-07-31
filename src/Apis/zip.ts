@@ -126,3 +126,17 @@ export async function unzip(bytes: ArrayBuffer): Promise<ZipEntry[]> {
 
   return out;
 }
+
+// finds the manifest.json entry in an archive, preferring the one closest to
+// the root (packages are often zipped inside a folder with the app's name)
+export function findManifestEntry(entries: ZipEntry[]): ZipEntry | undefined {
+  let best: { depth: number; entry: ZipEntry } | undefined;
+  for (const entry of entries) {
+    if (entry.name.endsWith("/")) continue;
+    const parts = entry.name.split("\\").join("/").replace(/^\/+/, "").split("/").filter(Boolean);
+    if (parts.pop()?.toLowerCase() !== "manifest.json") continue;
+    const depth = parts.length;
+    if (!best || depth < best.depth) best = { depth, entry };
+  }
+  return best?.entry;
+}

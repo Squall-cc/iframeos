@@ -1,4 +1,5 @@
 import { FileSystemAccess } from "../FileSystemApi";
+import isapiJs from "../js/isapi.js?raw";
 //api usage from scramjet embedded apps
 
 // proxy-transports does truly suck and i cant do custom scheme, so use https://aspen/ for now
@@ -50,6 +51,12 @@ async function handleFilesystem(
 
   switch (method) {
     case "GET": {
+      // isapi.js is the iSApi bridge raw apps load with
+      // <script src="/iSi/js/isapi.js">. always serve the bundled source (the
+      // vfs copy may be missing or stale), so raw apps get the bridge.
+      if (path.toLowerCase() === "/isi/js/isapi.js") {
+        return reply(200, isapiJs, "text/javascript");
+      }
       if (fs.isFile(path)) {
         return reply(200, (await fs.openFile(path).read()) ?? "", mimeFor(path));
       }
@@ -98,7 +105,13 @@ export async function handle(
   if (route === "eval") {
     return handleEval(rest.join("/"));
   }
-  return reply(404, "not found");
+  // root-relative urls (e.g. <script src="/iSi/js/isapi.js">) resolve to the
+  // aspen host with the vfs as the document root
+  return handleFilesystem(
+    "/" + decodeURIComponent(remote.pathname).replace(/^\/+/, ""),
+    method,
+    body,
+  );
 }
 
 // compatible with ProxyTransport interface but uhh network stuff is just a stub

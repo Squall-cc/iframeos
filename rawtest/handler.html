@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Raw Handler</title>
+</head>
+<body style="font-family:Segoe UI,sans-serif;padding:16px;margin:0;color:#222;">
+  <h2 style="margin:0 0 4px 0;">Raw File Handler</h2>
+  <p id="file" style="margin:0 0 8px 0;color:rgba(0,0,0,0.55);font-size:12px;">No file passed.</p>
+  <pre id="content" style="white-space:pre-wrap;font-family:monospace;font-size:12px;background:rgba(0,0,0,0.05);padding:8px;border-radius:2px;min-height:40px;"></pre>
+
+  <script src="/iSi/js/isapi.js"></script>
+  <script>
+    var path = isapi.getFileArg();
+    var fileEl = document.getElementById("file");
+    var contentEl = document.getElementById("content");
+
+    if (path) {
+      fileEl.textContent = "File: " + path;
+      isapi.fs
+        .readFile(path)
+        .then(function (text) {
+          contentEl.textContent = text == null ? "(empty or unreadable)" : text;
+        })
+        .catch(function (e) {
+          contentEl.textContent = "error: " + e;
+        });
+    }
+  </script>
+</body>
+</html>

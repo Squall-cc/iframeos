@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Raw Test</title>
+</head>
+<body style="font-family:Segoe UI,sans-serif;padding:16px;margin:0;color:#222;">
+  <h2 style="margin:0 0 4px 0;">Raw Test App</h2>
+  <p style="margin:0 0 12px 0;color:rgba(0,0,0,0.55);font-size:12px;">
+    Plain HTML app loaded from the virtual filesystem through scramjet.
+    Registered extensions: <b>.test1</b>, <b>.test2</b>
+  </p>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <button id="ask">Shell Ask</button>
+    <button id="modal">Shell Modal</button>
+    <button id="fs">Write &amp; read a file</button>
+    <button id="window">Window info</button>
+    <button id="close">Close</button>
+  </div>
+
+  <pre id="out" style="white-space:pre-wrap;font-family:monospace;font-size:12px;background:rgba(0,0,0,0.05);padding:8px;border-radius:2px;margin-top:12px;min-height:40px;"></pre>
+
+  <script src="/iSi/js/isapi.js"></script>
+  <script>
+    var out = document.getElementById("out");
+    function log(m) { out.textContent += m + "\n"; }
+    function logErr(e) { log("error: " + e); }
+
+    log("file arg: " + (isapi.getFileArg() || "(none)"));
+
+    document.getElementById("ask").onclick = function () {
+      isapi
+        .shellAsk(
+          [
+            { type: "text", name: "name", label: "Name:", value: "world" },
+            { type: "number", name: "count", label: "Count:", value: "3" },
+            { type: "password", name: "secret", label: "Secret:" },
+          ],
+          "Demo",
+          "Fill in the fields:",
+          { buttons: "okcancel" }
+        )
+        .then(function (r) {
+          log("shellAsk -> " + JSON.stringify(r));
+        })
+        .catch(logErr);
+    };
+
+    document.getElementById("modal").onclick = function () {
+      isapi
+        .shellModal("info", "Hello", "This modal was opened from a raw HTML app.")
+        .then(function (r) { log("shellModal -> " + r); })
+        .catch(logErr);
+    };
+
+    document.getElementById("fs").onclick = function () {
+      isapi.fs.createFile("/raw-test-write.txt");
+      isapi.fs
+        .writeFile("/raw-test-write.txt", "written from a raw html app")
+        .then(function () { return isapi.fs.readFile("/raw-test-write.txt"); })
+        .then(function (text) { log("fs read back: " + text); })
+        .catch(logErr);
+    };
+
+    document.getElementById("window").onclick = function () {
+      var w = isapi.getWindow();
+      if (!w) { log("no window handle (hwnd arg missing)"); return; }
+      w.getTitle()
+        .then(function (t) { log("window title: " + t); return w.dimensions(); })
+        .then(function (d) { log("window dimensions: " + JSON.stringify(d)); })
+        .catch(logErr);
+    };
+
+    document.getElementById("close").onclick = function () {
+      var w = isapi.getWindow();
+      if (w) w.close();
+    };
+  </script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 import { For, Show, onMount, type Component } from "solid-js";
 
 import "./App.css";
-import * as appStore from "../Apis/AppStore";
 import * as iSApi from "../Apis/iSApi";
 import { CLASSES_ROOT_PREFIX, APPS_REG_PREFIX } from "../Apis/iSApi";
 
@@ -26,7 +25,7 @@ const BUILTIN_APPS = [
   { key: "browser", name: "browser", description: "Web browser" },
   { key: "editor", name: "Text Editor", description: "Built-in text editor", hasFileOpener: true },
   { key: "registry-editor", name: "Registry Editor", description: "Registry editor" },
-  { key: "app-installer", name: "App Installer", description: "Install .spa apps" },
+  { key: "app-installer", name: "App Manager", description: "Install, configure, and uninstall apps" },
   { key: "file-explorer", name: "File Explorer", description: "Browse files" },
   { key: "test-app", name: "Test App", description: "Tests all features" },
   { key: "control-panel", name: "Control Panel", description: "System settings and reset" },
@@ -34,7 +33,6 @@ const BUILTIN_APPS = [
 
 const App: Component = () => {
   setWisp("wss://anura.pro/");
-  appStore.installAllApps().catch((e) => console.error("app store sync failed:", e));
   let fsacc = new iSApi.FileSystemAccess();
   let listofthingstocreateonstartup = [
     "/documents",
@@ -42,6 +40,7 @@ const App: Component = () => {
     "/iSi",
     "/iSi/theming",
     "/iSi/apps",
+    "/iSi/js",
     "/pictures",
     "/videos",
     "/3dobjects",

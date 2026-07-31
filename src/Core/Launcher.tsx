@@ -3,9 +3,9 @@ import "./Launcher.css";
 import type { Component } from "solid-js";
 import { createResource, For, onCleanup, onMount } from "solid-js";
 
-import * as appStore from "../Apis/AppStore";
-import type { LauncherAppEntry } from "../Apis/AppStore";
-import { getAllInstalledApps, launchSpaApp } from "../Apis/iSApi";
+import * as launcherApi from "../Apis/Launcher";
+import type { LauncherAppEntry } from "../Apis/Launcher";
+import { getAllInstalledApps, getInstalledAppType, launchRawApp, launchSpaApp } from "../Apis/iSApi";
 import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
 import controlPanel from "../SysApps/control-panel";
@@ -35,12 +35,16 @@ const builtinApps = new Map([
 ]);
 
 async function getAllApps(): Promise<LauncherAppEntry[]> {
-  const registryApps = await appStore.getLauncherApps();
-  const spaApps = await getAllInstalledApps();
-  for (const spa of spaApps) {
-    if (!registryApps.some((a) => a.type === "spa" && a.key === spa.key)) {
-      registryApps.push({ type: "spa", key: spa.key, name: spa.name });
-    }
+  const registryApps = await launcherApi.getLauncherApps();
+  const indexApps = await getAllInstalledApps();
+  for (const app of indexApps) {
+    if (registryApps.some((a) => a.key === app.key)) continue;
+    const type = await getInstalledAppType(app.key);
+    registryApps.push({
+      type: type === "raw" ? "raw" : "spa",
+      key: app.key,
+      name: app.name,
+    });
   }
   return registryApps;
 }
@@ -57,8 +61,11 @@ function open(entry: LauncherAppEntry, onClose?: () => void) {
     onClose?.();
     return;
   }
-  appStore.launchApp(entry);
-  onClose?.();
+  if (entry.type === "raw") {
+    launchRawApp(entry.key);
+    onClose?.();
+    return;
+  }
 }
 
 interface LauncherProps {

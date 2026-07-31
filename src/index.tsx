@@ -1,9 +1,8 @@
 import { render } from "solid-js/web";
 
 import "solid-devtools";
-import * as appStoreApi from "./Apis/AppStore";
 import * as fileSystemApi from "./Apis/FileSystemApi";
-import { WindowHandle, shellOpen, shellOpenWithPicker, shellModal, shellSelectFile, getAllInstalledApps, launchSpaApp, spawn, installSpaFromZip } from "./Apis/iSApi";
+import { WindowHandle, shellOpen, shellOpenWithPicker, shellOpenWith, shellModal, shellAsk, shellSelectFile, shellSelectDir, getAllInstalledApps, launchSpaApp, launchRawApp, getInstalledAppType, spawn, installSpaFromZip, installRawApp } from "./Apis/iSApi";
 import * as launcher from "./Apis/Launcher";
 import * as registryApi from "./Apis/RegistryApi";
 import * as scramjetApi from "./Apis/scramjet";
@@ -23,22 +22,28 @@ declare global {
       fs: typeof fileSystemApi & fileSystemApi.FileSystemAccess;
       launcher: typeof launcher;
       scramjet: typeof scramjetApi;
-      appStore: typeof appStoreApi;
       editor: typeof editorApi;
       version: string;
       spawn: typeof spawn;
       shellOpen: typeof shellOpen;
       shellOpenWithPicker: typeof shellOpenWithPicker;
+      shellOpenWith: typeof shellOpenWith;
       shellModal: typeof shellModal;
+      shellAsk: typeof shellAsk;
       shellSelectFile: typeof shellSelectFile;
+      shellSelectDir: typeof shellSelectDir;
       getAllInstalledApps: typeof getAllInstalledApps;
       launchSpaApp: typeof launchSpaApp;
+      launchRawApp: typeof launchRawApp;
+      getInstalledAppType: typeof getInstalledAppType;
       installSpaFromZip: typeof installSpaFromZip;
+      installRawApp: typeof installRawApp;
     };
     WindowHandle: typeof WindowHandle;
     spawn: typeof spawn;
     shellOpen: typeof shellOpen;
     shellModal: typeof shellModal;
+    shellAsk: typeof shellAsk;
   }
 }
 
@@ -49,17 +54,22 @@ const API = {
   fs,
   launcher,
   scramjet: scramjetApi,
-  appStore: appStoreApi,
   editor: editorApi,
   version: "1.0.0",
   spawn,
   shellOpen,
   shellOpenWithPicker,
+  shellOpenWith,
   shellModal,
+  shellAsk,
   shellSelectFile,
+  shellSelectDir,
   getAllInstalledApps,
   launchSpaApp,
+  launchRawApp,
+  getInstalledAppType,
   installSpaFromZip,
+  installRawApp,
 };
 
 // make global
@@ -68,6 +78,7 @@ window.WindowHandle = WindowHandle;
 window.spawn = spawn;
 window.shellOpen = shellOpen;
 window.shellModal = shellModal;
+window.shellAsk = shellAsk;
 
 // logging
 if (import.meta.env.DEV) {

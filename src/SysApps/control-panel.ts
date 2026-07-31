@@ -1,6 +1,8 @@
 import { CLASSES_ROOT_PREFIX, APPS_REG_PREFIX, shellModal } from "../Apis/iSApi";
 import { RegistryInstanceAccess } from "../Apis/RegistryApi";
-import { setContent, setMinSize } from "../Core/windowhelpers";
+import { setContent, setMinSize, spawn } from "../Core/windowhelpers";
+
+import appInstaller from "./app-installer";
 
 export default function run(hwnd: symbol) {
   setMinSize(hwnd, 450, 300);
@@ -17,6 +19,28 @@ export default function run(hwnd: symbol) {
   desc.style.cssText = "font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:12px;";
   desc.textContent = "Manage system settings and reset configuration.";
   container.appendChild(desc);
+
+  const appsSection = document.createElement("div");
+  appsSection.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid rgba(0,100,200,0.2);border-radius:4px;background:rgba(0,100,200,0.03);";
+
+  const appsHeader = document.createElement("div");
+  appsHeader.style.cssText = "font-weight:600;font-size:12px;color:#0078d4;";
+  appsHeader.textContent = "Apps";
+  appsSection.appendChild(appsHeader);
+
+  const appsDesc = document.createElement("div");
+  appsDesc.style.cssText = "font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px;";
+  appsDesc.textContent = "Install, uninstall, and configure file type associations for apps.";
+  appsSection.appendChild(appsDesc);
+
+  const appManagerBtn = document.createElement("button");
+  appManagerBtn.textContent = "Open App Manager";
+  appManagerBtn.style.cssText = "padding:6px 16px;font-size:12px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;align-self:flex-start;";
+  appManagerBtn.addEventListener("click", () => {
+    spawn("App Manager", appInstaller);
+  });
+  appsSection.appendChild(appManagerBtn);
+  container.appendChild(appsSection);
 
   const resetSection = document.createElement("div");
   resetSection.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid rgba(200,0,0,0.2);border-radius:4px;background:rgba(200,0,0,0.03);";
@@ -60,6 +84,7 @@ export default function run(hwnd: symbol) {
         "hi", "hello", "draw", "launch", "browser",
         "editor", "registry-editor", "app-installer",
         "file-explorer", "test-app", "control-panel",
+        "raw-test",
       ];
 
       for (const rec of allRecs) {
@@ -71,7 +96,9 @@ export default function run(hwnd: symbol) {
         }
       }
 
-      await reg._write("InternalSystem/AppIndex", "list", []);
+      await reg._write("InternalSystem/AppIndex", "list", [
+        { key: "raw-test", name: "Raw Test", version: "1.0.0", description: "Plain HTML test app" },
+      ]);
 
       for (const rec of allRecs) {
         if (rec.path.startsWith(CLASSES_ROOT_PREFIX)) {
@@ -83,12 +110,17 @@ export default function run(hwnd: symbol) {
       await reg._write(`${CLASSES_ROOT_PREFIX}/.txt`, "entry", "editFile");
       await reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "app", "test-app");
       await reg._write(`${CLASSES_ROOT_PREFIX}/.test`, "entry", "run");
+      await reg._write(`${CLASSES_ROOT_PREFIX}/.test1`, "app", "raw-test");
+      await reg._write(`${CLASSES_ROOT_PREFIX}/.test1`, "entry", "handler");
+      await reg._write(`${CLASSES_ROOT_PREFIX}/.test2`, "app", "raw-test");
+      await reg._write(`${CLASSES_ROOT_PREFIX}/.test2`, "entry", "handler");
 
       const { FileSystemAccess } = await import("../Apis/FileSystemApi");
       const fs = new FileSystemAccess();
       const appDir = "/iSi/apps";
       const entries = fs.listDirectory(appDir).filter((p) => p !== appDir);
       for (const entry of entries) {
+        if (entry === "/iSi/apps/raw-test") continue;
         if (fs.isDirectory(entry)) {
           fs.deleteDirectoryRecursive(entry);
         } else {

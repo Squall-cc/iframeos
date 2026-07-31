@@ -15,7 +15,7 @@ import { spawn } from "../Core/windowhelpers";
 import type { RegisteredSpaManifest } from "./AppManifest";
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
-import { unzip, type ZipEntry } from "./zip";
+import { unzip, findManifestEntry, type ZipEntry } from "./zip";
 
 export const APPS_REG_PREFIX = "InternalSystem/Apps";
 export const APP_INDEX_PATH = "InternalSystem/AppIndex";
@@ -159,8 +159,10 @@ const INJECTED_NAMES = [
   "WindowHandle",
   "shellOpen",
   "shellOpenWithPicker",
+  "shellOpenWith",
   "shellModal",
   "shellSelectFile",
+  "shellSelectDir",
   "getAllInstalledApps",
   "launchSpaApp",
 ];
@@ -194,8 +196,10 @@ function evaluateModule(
             api["WindowHandle"],
             api["shellOpen"],
             api["shellOpenWithPicker"],
+            api["shellOpenWith"],
             api["shellModal"],
             api["shellSelectFile"],
+            api["shellSelectDir"],
             api["getAllInstalledApps"],
             api["launchSpaApp"],
           ];
@@ -235,7 +239,7 @@ function normalizeExtension(ext: string): string {
 }
 
 async function extractManifest(entries: ZipEntry[]): Promise<Record<string, unknown>> {
-  const manifestEntry = entries.find((e) => e.name.toLowerCase() === "manifest.json");
+  const manifestEntry = findManifestEntry(entries);
   if (!manifestEntry) {
     throw new Error(".spa archive must contain a manifest.json");
   }
@@ -278,11 +282,19 @@ export interface InstallSpaOptions {
   fileAssociations?: string[];
 }
 
+export interface InstallProgress {
+  phase: "extract" | "write" | "register";
+  done: number;
+  total: number;
+}
+
 export async function installSpaFromZip(
   bytes: ArrayBuffer,
   options?: InstallSpaOptions,
+  onProgress?: (p: InstallProgress) => void,
 ): Promise<string> {
   const { manifest: raw, fileAssociations, entries } = await parseSpaArchive(bytes);
+  onProgress?.({ phase: "write", done: 0, total: entries.length });
 
   const name = raw["name"] as string | undefined;
   const key = raw["key"] as string | undefined;
@@ -306,6 +318,7 @@ export async function installSpaFromZip(
   if (fs.exists(appDir)) fs.deleteDirectoryRecursive(appDir);
   fs.createDirectory(appDir);
 
+  let done = 0;
   for (const entry of entries) {
     const rel = entry.name.replace(/^\/+/, "");
     if (!rel || rel.toLowerCase() === "manifest.json") continue;
@@ -318,7 +331,11 @@ export async function installSpaFromZip(
     const blob = new Blob([entry.data]);
     await fs.data.write(dest, blob);
     fs.updateFileMeta(dest, blob);
+    done++;
+    onProgress?.({ phase: "write", done, total: entries.length });
   }
+
+  onProgress?.({ phase: "register", done: 0, total: 0 });
 
   const registered: RegisteredSpaManifest = {
     name,
