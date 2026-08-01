@@ -47,19 +47,23 @@ function uniquePath(fs: FileSystemAccess, desired: string): string {
   return dest;
 }
 
-// creates a .lnk file in `dir` pointing at a vfs path. returns the new path.
+// creates a .lnk file in `dir` pointing at a vfs path. the file is named after
+// the target (or `name` when given) with the .lnk extension. returns the new path.
 export async function createShortcutFile(
   target: string,
   dir: string,
+  name?: string,
+  opts?: { emit?: boolean },
 ): Promise<string | null> {
   const fs = new FileSystemAccess();
   if (!fs.exists(target)) return null;
-  const dest = uniquePath(fs, normalize(`${dir}/${basename(target)}${SHORTCUT_EXT}`));
+  const base = name?.trim() || basename(target);
+  const dest = uniquePath(fs, normalize(`${dir}/${base}${SHORTCUT_EXT}`));
   fs.createFile(dest);
   const data = JSON.stringify({ target });
   await fs.data.write(dest, data);
   fs.updateFileMeta(dest, data);
-  emitVfsChanged();
+  if (opts?.emit !== false) emitVfsChanged();
   return dest;
 }
 
@@ -68,6 +72,7 @@ export async function createAppShortcutFile(
   appKey: string,
   appName: string,
   dir: string,
+  opts?: { emit?: boolean },
 ): Promise<string | null> {
   const fs = new FileSystemAccess();
   const dest = uniquePath(fs, normalize(`${dir}/${appName}${SHORTCUT_EXT}`));
@@ -75,7 +80,7 @@ export async function createAppShortcutFile(
   const data = JSON.stringify({ app: appKey, name: appName });
   await fs.data.write(dest, data);
   fs.updateFileMeta(dest, data);
-  emitVfsChanged();
+  if (opts?.emit !== false) emitVfsChanged();
   return dest;
 }
 
@@ -103,11 +108,34 @@ export async function readShortcut(path: string): Promise<ShortcutTarget | null>
   return null;
 }
 
-// resolves a path to its effective target, following one level of .lnk.
+// fully resolves a path through chains of .lnk files, returning the effective
+// target (an installed app, or a vfs path). broken shortcuts still return the
+// path they were supposed to point at so the caller can handle it itself.
+export async function fullyResolveShortcut(path: string): Promise<ShortcutTarget> {
+  let current = path;
+  const seen = new Set<string>();
+  while (isShortcutFile(current)) {
+    if (seen.has(current)) break;
+    seen.add(current);
+    const st = await readShortcut(current);
+    if (!st) break;
+    if (st.kind === "app") return st;
+    current = st.target;
+  }
+  return { kind: "file", target: current };
+}
+
+// resolves a .lnk to a plain vfs path (or the app key for app shortcuts),
+// following chains. broken shortcuts return the path they should've resolved
+// to so the caller can deal with the missing target.
+export async function resolveShortcutPath(path: string): Promise<string> {
+  const resolved = await fullyResolveShortcut(path);
+  return resolved.target;
+}
+
+// resolves a path to its effective target, following chains of .lnk.
 export async function resolveShortcut(path: string): Promise<ShortcutTarget> {
-  const direct = await readShortcut(path);
-  if (direct) return direct;
-  return { kind: "file", target: path };
+  return fullyResolveShortcut(path);
 }
 
 async function moveDirectory(

@@ -3,18 +3,18 @@ import "@fortawesome/fontawesome-free/css/solid.min.css";
 
 import { For, Show, createSignal, onCleanup, onMount, type Component } from "solid-js";
 
-import { getAppIconUrl } from "../Apis/appIcon";
+import { getAppIconUrl, getFileTypeIconUrl } from "../Apis/appIcon";
 import {
   APP_DRAG_MIME,
+  DESKTOP_DIR,
   addAppShortcut,
-  addFileShortcut,
   arrangeDesktopIcons,
   copyHostFileToDesktop,
+  displayShortcutName,
   isAppShortcut,
   isFileShortcut,
   moveToDesktop,
   onDesktopChanged,
-  removeShortcut,
   syncDesktopFiles,
   updateShortcutPosition,
   VFS_DRAG_MIME,
@@ -23,7 +23,7 @@ import {
 import { FileSystemAccess, onVfsChanged } from "../Apis/FileSystemApi";
 import { launchAppEntry, shellOpenWith, shellOpenWithPicker, shellModal } from "../Apis/iSApi";
 import {
-  createAppShortcutFile,
+  createShortcutFile,
   emptyTrash,
   isShortcutFile,
   movePath,
@@ -118,11 +118,29 @@ function DesktopShortcut(props: {
   onMove: (x: number, y: number) => void;
 }) {
   const [img, setImg] = createSignal<string | undefined>(undefined);
+  const [targetIsDir, setTargetIsDir] = createSignal(false);
   let el!: HTMLDivElement;
 
   onMount(async () => {
-    if (isAppShortcut(props.shortcut)) {
-      setImg(await getAppIconUrl(props.shortcut.app, undefined));
+    const s = props.shortcut;
+    if (isAppShortcut(s)) {
+      setImg(await getAppIconUrl(s.app, undefined));
+      return;
+    }
+    // resolve .lnk files so the icon matches what the shortcut points at.
+    if (isShortcutFile(s.file)) {
+      const resolved = await resolveShortcut(s.file);
+      if (resolved.kind === "app") {
+        setImg(await getAppIconUrl(resolved.target, undefined));
+        return;
+      }
+      const fs = new FileSystemAccess();
+      if (fs.isDirectory(resolved.target)) {
+        setTargetIsDir(true);
+        return;
+      }
+      const iconUrl = await getFileTypeIconUrl(resolved.target);
+      if (iconUrl) setImg(iconUrl);
     }
   });
 
@@ -175,31 +193,14 @@ function DesktopShortcut(props: {
     const drop = findDropTarget(e);
     if (drop) {
       if (drop.kind === "explorer") {
-        if (isFileShortcut(props.shortcut)) {
-          void movePath(props.shortcut.file, drop.dir);
-        } else {
-          void createAppShortcutFile(props.shortcut.app, props.shortcut.name, drop.dir);
-          commitPosition(e);
-        }
+        void movePath(props.shortcut.file, drop.dir);
         return;
       }
       if (drop.kind === "trash") {
-        if (isFileShortcut(props.shortcut)) {
-          void moveToTrash(props.shortcut.file);
-        } else {
-          commitPosition(e);
-        }
+        void moveToTrash(props.shortcut.file);
         return;
       }
-      if (drop.kind === "app-shortcut") {
-        if (isFileShortcut(props.shortcut)) {
-          void openWithDroppedFile(props.shortcut.file);
-        } else {
-          commitPosition(e);
-        }
-        return;
-      }
-      if (drop.kind === "window") {
+      if (drop.kind === "app-shortcut" || drop.kind === "window") {
         if (isFileShortcut(props.shortcut)) {
           void openWithDroppedFile(props.shortcut.file);
         } else {
@@ -214,7 +215,10 @@ function DesktopShortcut(props: {
 
   async function openWithDroppedFile(path: string) {
     const resolved = await resolveShortcut(path);
-    if (resolved.kind === "app") return;
+    if (resolved.kind === "app") {
+      void launchAppEntry(resolved.target, "run");
+      return;
+    }
     void shellOpenWith(resolved.target);
   }
 
@@ -289,18 +293,15 @@ function DesktopShortcut(props: {
     showShortcutMenu(e.clientX, e.clientY, props.shortcut);
   }
 
-  const isFolder =
-    isFileShortcut(props.shortcut) &&
-    new FileSystemAccess().isDirectory(props.shortcut.file);
   const isTrash =
     isFileShortcut(props.shortcut) && props.shortcut.file === TRASH_DIR;
+  const isRealFolder =
+    isFileShortcut(props.shortcut) &&
+    new FileSystemAccess().isDirectory(props.shortcut.file);
   const isLink =
     isFileShortcut(props.shortcut) && isShortcutFile(props.shortcut.file);
-  const displayName = isTrash
-    ? "Recycle Bin"
-    : isFileShortcut(props.shortcut)
-      ? props.shortcut.file.split("/").filter(Boolean).pop() || props.shortcut.file
-      : props.shortcut.name;
+  const showFolderIcon = isRealFolder || (isLink && targetIsDir());
+  const displayName = shortcutDisplayName(props.shortcut);
 
   return (
     <div
@@ -325,18 +326,16 @@ function DesktopShortcut(props: {
             class={
               isTrash
                 ? "fa-solid fa-trash-can"
-                : isLink
-                  ? "fa-solid fa-link"
-                  : isFolder
-                    ? "fa-solid fa-folder"
-                    : "fa-solid fa-file"
+                : showFolderIcon
+                  ? "fa-solid fa-folder"
+                  : "fa-solid fa-file"
             }
             style={{
               "font-size": isTrash ? "38px" : "36px",
               "line-height": "40px",
               color: isTrash
                 ? "rgba(220,220,220,0.9)"
-                : isFolder
+                : showFolderIcon
                   ? "rgba(255,211,77,0.95)"
                   : "rgba(255,255,255,0.9)",
               "text-shadow": "0 1px 2px rgba(0,0,0,0.9)",
@@ -416,15 +415,30 @@ function buildContextMenu(
   }, 0);
 }
 
+function shortcutDisplayName(shortcut: DesktopShortcut): string {
+  if (isFileShortcut(shortcut) && shortcut.file === TRASH_DIR) return "Recycle Bin";
+  if (isAppShortcut(shortcut)) return shortcut.name;
+  return displayShortcutName(shortcut.file);
+}
+
 function showShortcutMenu(x: number, y: number, shortcut: DesktopShortcut) {
+  const fs = new FileSystemAccess();
   const isTrash = isFileShortcut(shortcut) && shortcut.file === TRASH_DIR;
+  // .lnk files (and real folders) don't get "Open With" - shortcuts resolve
+  // to their target instead.
+  const isLink = isFileShortcut(shortcut) && isShortcutFile(shortcut.file);
+  const isRealFolder = isFileShortcut(shortcut) && fs.isDirectory(shortcut.file);
+  const canOpenWith = isFileShortcut(shortcut) && !isLink && !isRealFolder;
+
   buildContextMenu(x, y, (menu, addItem, addSeparator) => {
     addItem("Open", () => void openShortcut(shortcut));
-    if (isFileShortcut(shortcut)) {
+    if (canOpenWith) {
       addItem("Open With", () => void openWithShortcut(shortcut));
     }
-    addSeparator();
-    addItem("Create Shortcut", () => void duplicateShortcut(shortcut));
+    if (!isTrash) {
+      addSeparator();
+      addItem("Create Shortcut", () => void duplicateShortcut(shortcut));
+    }
     if (isTrash) {
       addItem("Empty Recycle Bin", () => {
         const count = emptyTrash();
@@ -446,6 +460,9 @@ function showBackgroundMenu(x: number, y: number) {
       spawn("Control Panel", controlPanel);
     });
     addSeparator();
+    addItem("New Shortcut...", () => {
+      void launchAppEntry("shortcut-wizard", "run");
+    });
     addItem("Arrange Icons", () => void arrangeDesktopIcons());
   });
 }
@@ -500,19 +517,30 @@ async function duplicateShortcut(shortcut: DesktopShortcut) {
     await addAppShortcut(shortcut.app, shortcut.name, undefined, undefined, {
       allowDuplicate: true,
     });
-  } else {
-    await addFileShortcut(shortcut.file, undefined, undefined, {
-      allowDuplicate: true,
-    });
+    return;
   }
+  // shortcuts duplicate to their target so "Create Shortcut" on a .lnk keeps
+  // pointing at the same file/folder.
+  if (isShortcutFile(shortcut.file)) {
+    const resolved = await resolveShortcut(shortcut.file);
+    if (resolved.kind === "app") {
+      await addAppShortcut(
+        resolved.target,
+        resolved.name ?? shortcutDisplayName(shortcut),
+        undefined,
+        undefined,
+        { allowDuplicate: true },
+      );
+      return;
+    }
+    await createShortcutFile(resolved.target, DESKTOP_DIR);
+    return;
+  }
+  await createShortcutFile(shortcut.file, DESKTOP_DIR);
 }
 
 async function deleteShortcut(shortcut: DesktopShortcut) {
-  if (isAppShortcut(shortcut)) {
-    await removeShortcut(shortcut);
-    return;
-  }
-  const name = shortcut.file.split("/").filter(Boolean).pop() || shortcut.file;
+  const name = shortcutDisplayName(shortcut);
   const result = await shellModal(
     "yesno",
     undefined,
@@ -520,8 +548,7 @@ async function deleteShortcut(shortcut: DesktopShortcut) {
     `Move "${name}" to the Recycle Bin?`,
   );
   if (result !== "yes") return;
-  const ok = await moveToTrash(shortcut.file);
-  if (!ok) await removeShortcut(shortcut);
+  await moveToTrash(shortcut.file);
 }
 
 export default Desktop;

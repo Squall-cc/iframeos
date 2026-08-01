@@ -1,8 +1,20 @@
 import { FileSystemAccess } from "./FileSystemApi";
-import { TRASH_DIR } from "./Shortcuts";
+import {
+  TRASH_DIR,
+  SHORTCUT_EXT,
+  basename,
+  createAppShortcutFile,
+  isShortcutFile,
+  readShortcut,
+} from "./Shortcuts";
 import { DESKTOP_JSON } from "./system-defaults";
 
+// the desktop is a reflection of the /desktop directory. every shortcut lives
+// there as a real .lnk file; desktop.json is only hidden bookkeeping that
+// stores where each icon sits. app shortcuts are .lnk files too, so dragging
+// something from the start menu creates one just like any other file.
 export interface DesktopAppShortcut {
+  file: string;
   app: string;
   name: string;
   x: number;
@@ -30,11 +42,11 @@ export function isAppShortcut(s: DesktopShortcut): s is DesktopAppShortcut {
 }
 
 export function isFileShortcut(s: DesktopShortcut): s is DesktopFileShortcut {
-  return typeof (s as DesktopFileShortcut).file === "string";
+  return !isAppShortcut(s);
 }
 
 export function shortcutKey(s: DesktopShortcut): string {
-  return isAppShortcut(s) ? `app:${s.app}` : `file:${s.file}`;
+  return s.file;
 }
 
 function num(v: unknown, d: number): number {
@@ -63,6 +75,43 @@ export function onDesktopChanged(fn: () => void): () => void {
   return () => window.removeEventListener(DESKTOP_CHANGED_EVENT, fn);
 }
 
+// strips a trailing .lnk so shortcuts display without the extension.
+export function displayShortcutName(path: string): string {
+  let name = basename(path);
+  if (name.toLowerCase().endsWith(SHORTCUT_EXT)) {
+    name = name.slice(0, -SHORTCUT_EXT.length);
+  }
+  return name || basename(path);
+}
+
+// the bottom edge of the first icon column, used by the down-then-right
+// layout so icons fill a column before spilling into the next one.
+function desktopColumnBottom(): number {
+  return Math.max(80, window.innerHeight - 96);
+}
+
+function findFreeSlot(
+  icons: DesktopShortcut[],
+  startX = 16,
+  startY = 16,
+): { x: number; y: number } {
+  const occupied = new Set(icons.map((i) => `${i.x},${i.y}`));
+  const step = 96;
+  const maxY = desktopColumnBottom();
+  let x = startX;
+  let y = startY;
+  while (occupied.has(`${x},${y}`)) {
+    y += step;
+    if (y > maxY) {
+      y = startY;
+      x += step;
+    }
+  }
+  return { x, y };
+}
+
+// reads the stored icon positions (and migrates any legacy app entries that
+// predate .lnk files into real file-based ones).
 export async function readDesktopIcons(): Promise<DesktopShortcut[]> {
   const fs = new FileSystemAccess();
   try {
@@ -75,7 +124,11 @@ export async function readDesktopIcons(): Promise<DesktopShortcut[]> {
       if (typeof item !== "object" || item === null) continue;
       const s = item as Record<string, unknown>;
       if (typeof s.app === "string" && typeof s.name === "string") {
-        out.push({ app: s.app, name: s.name, x: num(s.x, 16), y: num(s.y, 16) });
+        const file =
+          typeof s.file === "string"
+            ? s.file
+            : `${DESKTOP_DIR}/${s.name}${SHORTCUT_EXT}`;
+        out.push({ file, app: s.app, name: s.name, x: num(s.x, 16), y: num(s.y, 16) });
       } else if (typeof s.file === "string") {
         out.push({ file: s.file, x: num(s.x, 16), y: num(s.y, 16) });
       }
@@ -93,28 +146,20 @@ export async function writeDesktopIcons(
 ): Promise<void> {
   const fs = new FileSystemAccess();
   if (!fs.isFile(DESKTOP_JSON)) fs.createFile(DESKTOP_JSON);
-  const text = JSON.stringify({ icons }, null, 2);
+  const data = icons.map((i) => ({ file: i.file, x: i.x, y: i.y }));
+  const text = JSON.stringify({ icons: data }, null, 2);
   await fs.data.write(DESKTOP_JSON, text);
   fs.updateFileMeta(DESKTOP_JSON, text);
   if (opts?.emit !== false) emitDesktopChanged();
 }
 
-function findFreeSlot(
-  icons: DesktopShortcut[],
-  startX = 16,
-  startY = 16,
-): { x: number; y: number } {
-  const occupied = new Set(icons.map((i) => `${i.x},${i.y}`));
-  let x = startX;
-  let y = startY;
-  while (occupied.has(`${x},${y}`)) {
-    x += 96;
-    if (x > 960) {
-      x = 16;
-      y += 96;
-    }
-  }
-  return { x, y };
+async function setPosition(file: string, x: number, y: number): Promise<void> {
+  const icons = await readDesktopIcons();
+  const idx = icons.findIndex((i) => i.file === file);
+  const pos = clampDesktopPosition(x, y);
+  if (idx === -1) icons.push({ file, x: pos.x, y: pos.y });
+  else icons[idx] = { ...icons[idx], x: pos.x, y: pos.y };
+  await writeDesktopIcons(icons);
 }
 
 export async function addAppShortcut(
@@ -124,32 +169,34 @@ export async function addAppShortcut(
   y?: number,
   opts?: { allowDuplicate?: boolean },
 ): Promise<void> {
-  const icons = await readDesktopIcons();
-  if (!opts?.allowDuplicate && icons.some((i) => isAppShortcut(i) && i.app === appKey)) return;
-  const slot =
-    x !== undefined && y !== undefined ? { x, y } : findFreeSlot(icons);
-  icons.push({ app: appKey, name, x: slot.x, y: slot.y });
-  await writeDesktopIcons(icons);
+  const fs = new FileSystemAccess();
+  if (!opts?.allowDuplicate) {
+    for (const p of fs.listDirectory(DESKTOP_DIR)) {
+      if (!isShortcutFile(p)) continue;
+      const st = await readShortcut(p);
+      if (st?.kind === "app" && st.target === appKey) return;
+    }
+  }
+  const dest = await createAppShortcutFile(appKey, name, DESKTOP_DIR, {
+    emit: false,
+  });
+  if (!dest) return;
+  if (x !== undefined && y !== undefined) await setPosition(dest, x, y);
+  emitDesktopChanged();
 }
 
 export async function addFileShortcut(
   filePath: string,
   x?: number,
   y?: number,
-  opts?: { allowDuplicate?: boolean },
+  _opts?: { allowDuplicate?: boolean },
 ): Promise<void> {
-  const icons = await readDesktopIcons();
-  if (!opts?.allowDuplicate && icons.some((i) => isFileShortcut(i) && i.file === filePath)) return;
-  const slot =
-    x !== undefined && y !== undefined ? { x, y } : findFreeSlot(icons);
-  icons.push({ file: filePath, x: slot.x, y: slot.y });
-  await writeDesktopIcons(icons);
+  if (x !== undefined && y !== undefined) await setPosition(filePath, x, y);
 }
 
 export async function removeShortcut(target: DesktopShortcut): Promise<void> {
   const icons = await readDesktopIcons();
-  const key = shortcutKey(target);
-  const next = icons.filter((i) => shortcutKey(i) !== key);
+  const next = icons.filter((i) => i.file !== target.file);
   if (next.length !== icons.length) await writeDesktopIcons(next);
 }
 
@@ -158,56 +205,87 @@ export async function updateShortcutPosition(
   x: number,
   y: number,
 ): Promise<void> {
-  const icons = await readDesktopIcons();
-  const idx = icons.findIndex((i) => shortcutKey(i) === shortcutKey(target));
-  if (idx === -1) return;
-  const pos = clampDesktopPosition(x, y);
-  icons[idx] = { ...icons[idx], x: pos.x, y: pos.y };
-  await writeDesktopIcons(icons);
+  await setPosition(target.file, x, y);
 }
 
-// makes sure every file/folder physically in /desktop has a shortcut and that
-// shortcuts pointing at deleted files are dropped. returns the reconciled list.
+// makes sure every file/folder physically in /desktop has an entry (resolving
+// .lnk files into app or file shortcuts) and that the trash is always present.
+// returns the reconciled list.
 export async function syncDesktopFiles(): Promise<DesktopShortcut[]> {
   const fs = new FileSystemAccess();
-  const icons = await readDesktopIcons();
-  const cleaned = icons.filter((i) => {
-    if (isFileShortcut(i)) return fs.exists(i.file);
-    return true;
-  });
-  const known = new Set(cleaned.filter(isFileShortcut).map((i) => i.file));
-  let changed = cleaned.length !== icons.length;
+  const stored = await readDesktopIcons();
+  const posByPath = new Map<string, { x: number; y: number }>();
+  for (const s of stored) posByPath.set(s.file, { x: s.x, y: s.y });
+
+  // migrate legacy stored app shortcuts (that predate .lnk files) into real
+  // .lnk files sitting on the desktop. emits are suppressed so the migration
+  // can't cascade into re-entrant desktop syncs.
+  for (const s of stored) {
+    if (isAppShortcut(s) && !fs.exists(s.file)) {
+      const dest = await createAppShortcutFile(s.app, s.name, DESKTOP_DIR, {
+        emit: false,
+      });
+      if (dest && dest !== s.file) {
+        const pos = posByPath.get(s.file);
+        posByPath.delete(s.file);
+        if (pos) posByPath.set(dest, pos);
+      }
+    }
+  }
+
+  const out: DesktopShortcut[] = [];
+  const listed = new Set<string>();
+  const addFile = (file: string) => {
+    const pos = posByPath.get(file) ?? findFreeSlot(out);
+    out.push({ file, x: pos.x, y: pos.y });
+    listed.add(file);
+  };
+
   for (const p of fs.listDirectory(DESKTOP_DIR)) {
     if (p === DESKTOP_JSON) continue;
-    if (known.has(p)) continue;
-    const slot = findFreeSlot(cleaned);
-    cleaned.push({ file: p, x: slot.x, y: slot.y });
-    changed = true;
+    if (isShortcutFile(p)) {
+      const st = await readShortcut(p);
+      if (st?.kind === "app") {
+        const pos = posByPath.get(p) ?? findFreeSlot(out);
+        out.push({
+          file: p,
+          app: st.target,
+          name: st.name ?? displayShortcutName(p),
+          x: pos.x,
+          y: pos.y,
+        });
+        listed.add(p);
+        continue;
+      }
+    }
+    addFile(p);
   }
-  if (!known.has(TRASH_DIR)) {
-    const slot = findFreeSlot(cleaned);
-    cleaned.push({ file: TRASH_DIR, x: slot.x, y: slot.y });
-    changed = true;
-  }
-  if (changed) await writeDesktopIcons(cleaned, { emit: false });
-  return cleaned;
-}
 
-function desktopItemName(i: DesktopShortcut): string {
-  if (isAppShortcut(i)) return i.name;
-  return i.file.split("/").filter(Boolean).pop() || i.file;
+  if (!listed.has(TRASH_DIR)) {
+    const pos = posByPath.get(TRASH_DIR) ?? findFreeSlot(out);
+    out.push({ file: TRASH_DIR, x: pos.x, y: pos.y });
+  }
+
+  const storedKeys = new Set(stored.map((s) => s.file));
+  const outKeys = new Set(out.map((s) => s.file));
+  const changed =
+    storedKeys.size !== outKeys.size ||
+    [...storedKeys].some((k) => !outKeys.has(k));
+  if (changed) await writeDesktopIcons(out, { emit: false });
+  return out;
 }
 
 // sorts the desktop icons so the trash comes first, then apps, then folders,
-// then files, each in alphabetical order, and lays them out in a grid.
+// then files, each in alphabetical order, and lays them out in a grid that
+// fills columns top-to-bottom before moving right.
 export async function arrangeDesktopIcons(): Promise<void> {
   const fs = new FileSystemAccess();
-  const icons = await readDesktopIcons();
+  const icons = await syncDesktopFiles();
 
   const rank = (i: DesktopShortcut): number => {
-    if (isFileShortcut(i) && i.file === TRASH_DIR) return 0;
+    if (i.file === TRASH_DIR) return 0;
     if (isAppShortcut(i)) return 1;
-    if (isFileShortcut(i) && fs.isDirectory(i.file)) return 2;
+    if (fs.isDirectory(i.file)) return 2;
     return 3;
   };
 
@@ -215,21 +293,24 @@ export async function arrangeDesktopIcons(): Promise<void> {
     .slice()
     .sort(
       (a, b) =>
-        rank(a) - rank(b) || desktopItemName(a).localeCompare(desktopItemName(b)),
+        rank(a) - rank(b) ||
+        displayShortcutName(a.file).localeCompare(displayShortcutName(b.file)),
     );
 
   const step = 96;
-  let x = 16;
-  let y = 16;
-  const maxX = Math.max(80, window.innerWidth - 96);
+  const startX = 16;
+  const startY = 16;
+  const maxY = desktopColumnBottom();
+  let x = startX;
+  let y = startY;
   for (const icon of sorted) {
     const pos = clampDesktopPosition(x, y);
     icon.x = pos.x;
     icon.y = pos.y;
-    x += step;
-    if (x > maxX) {
-      x = 16;
-      y += step;
+    y += step;
+    if (y > maxY) {
+      y = startY;
+      x += step;
     }
   }
   await writeDesktopIcons(sorted);

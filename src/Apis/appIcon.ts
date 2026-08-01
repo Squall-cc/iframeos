@@ -1,7 +1,9 @@
+import noappIcon from "../Assets/iconsUI/noapp.ico";
+
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
+import { CLASSES_ROOT_PREFIX } from "./system-defaults";
 
-import noappIcon from "../Assets/iconsUI/noapp.ico";
 
 export const DEFAULT_APP_ICON = noappIcon;
 
@@ -61,4 +63,24 @@ export async function getAppIconUrl(
   }
   const cached = iconCache.get(appKey);
   return cached ?? DEFAULT_APP_ICON;
+}
+
+// resolves the icon for a file by its extension's registered app, if any.
+// used by shortcuts so a .lnk to a file shows the icon of the app that opens
+// it instead of a generic link.
+export async function getFileTypeIconUrl(
+  filePath: string,
+): Promise<string | undefined> {
+  const extIdx = filePath.lastIndexOf(".");
+  if (extIdx === -1) return undefined;
+  const ext = filePath.slice(extIdx).toLowerCase();
+  try {
+    const reg = new RegistryInstanceAccess();
+    const record = await reg._load(`${CLASSES_ROOT_PREFIX}/${ext}`);
+    const appKey = record?.values["app"] as string | undefined;
+    if (appKey) return getAppIconUrl(appKey, undefined);
+  } catch {
+    // no association -> fall back to the generic file icon
+  }
+  return undefined;
 }

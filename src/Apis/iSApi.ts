@@ -23,13 +23,13 @@ import {
   onWindowClose,
   setWindowIcon,
 } from "../Core/windowhelpers";
-
-import { getAppIconUrl } from "./appIcon";
 import { editFile } from "../SysApps/editor";
 
+import { getAppIconUrl } from "./appIcon";
 import { FileSystemAccess } from "./FileSystemApi";
 import { getRawEntryMethods, launchRawEntry } from "./RawApp";
 import { RegistryInstanceAccess } from "./RegistryApi";
+import { fullyResolveShortcut, isShortcutFile } from "./Shortcuts";
 import { getSpaEntryMethods, launchSpaEntry } from "./SpaApp";
 
 export { installSpaFromZip } from "./SpaApp";
@@ -140,23 +140,32 @@ export interface ShellOpenResult {
 }
 
 export async function shellOpen(filename: string): Promise<ShellOpenResult> {
+  // fully resolve .lnk files first so shortcuts open their real target (or
+  // launch the app an app shortcut points at).
+  const resolved = await fullyResolveShortcut(filename);
+  if (resolved.kind === "app") {
+    const ok = await launchAppEntry(resolved.target, "run");
+    return { handled: ok, appKey: resolved.target, entry: "run" };
+  }
+  const target = resolved.target;
+
   const reg = new RegistryInstanceAccess();
 
-  const extIdx = filename.lastIndexOf(".");
+  const extIdx = target.lastIndexOf(".");
   if (extIdx === -1) return { handled: false };
-  const ext = filename.slice(extIdx).toLowerCase();
+  const ext = target.slice(extIdx).toLowerCase();
 
   const assocRecord = await reg._load(`${CLASSES_ROOT_PREFIX}/${ext}`);
-  if (!assocRecord) return shellOpenWithPickerInternal(filename, ext);
+  if (!assocRecord) return shellOpenWithPickerInternal(target, ext);
 
   const assoc = assocRecord.values as Record<string, string>;
   const appKey = assoc["app"];
   const entryFn = assoc["entry"];
-  if (!appKey || !entryFn) return shellOpenWithPickerInternal(filename, ext);
+  if (!appKey || !entryFn) return shellOpenWithPickerInternal(target, ext);
 
-  const ok = await launchAppEntry(appKey, entryFn, filename);
+  const ok = await launchAppEntry(appKey, entryFn, target);
   if (ok) return { handled: ok, appKey, entry: entryFn };
-  return shellOpenWithPickerInternal(filename, ext);
+  return shellOpenWithPickerInternal(target, ext);
 }
 
 async function shellOpenWithPickerInternal(
@@ -181,14 +190,19 @@ export async function shellOpenWithPicker(filename: string): Promise<boolean> {
 // always shows the "open with" app picker, unlike shellOpenWithPicker which
 // only falls back to it when no association is registered.
 export async function shellOpenWith(filename: string): Promise<boolean> {
-  const extIdx = filename.lastIndexOf(".");
-  const ext = extIdx === -1 ? "" : filename.slice(extIdx).toLowerCase();
+  const resolved = await fullyResolveShortcut(filename);
+  if (resolved.kind === "app") {
+    return launchAppEntry(resolved.target, "run");
+  }
+  const target = resolved.target;
+  const extIdx = target.lastIndexOf(".");
+  const ext = extIdx === -1 ? "" : target.slice(extIdx).toLowerCase();
   const selected = await showAppPicker(
-    `Open "${filename.split("/").pop()}" with:`,
+    `Open "${target.split("/").pop()}" with:`,
     ext,
   );
   if (!selected) return false;
-  return launchAppEntry(selected.appKey, selected.entry, filename);
+  return launchAppEntry(selected.appKey, selected.entry, target);
 }
 
 export type ShellModalType = "error" | "info" | "warn" | "yesno" | "abortretrycancel" | "retrycancel";
@@ -815,6 +829,15 @@ async function openShellPicker(
               selectedFile = entry;
               fileNameInput.value = name;
               row.style.background = "rgba(0,100,200,0.2)";
+            } else if (isShortcutFile(entry)) {
+              void (async () => {
+                const resolved = await fullyResolveShortcut(entry);
+                if (resolved.kind === "file" && fs.isDirectory(resolved.target)) {
+                  selectedFile = entry;
+                  fileNameInput.value = displayPickerName(entry);
+                  row.style.background = "rgba(0,100,200,0.2)";
+                }
+              })();
             }
           } else {
             if (!isDir && matchesFilter(name)) {
@@ -844,15 +867,32 @@ async function openShellPicker(
       buildDirectoryTree();
     }
 
-    function getSelectedPath(): string | null {
-      const name = fileNameInput.value.trim();
-      if (!name) {
-        if (options?.save) {
-          shellModal("info", Symbol(), "No Filename", "Please enter a filename.");
+    function displayPickerName(path: string): string {
+      let n = path.split("/").filter(Boolean).pop() || path;
+      if (n.toLowerCase().endsWith(".lnk")) n = n.slice(0, -4);
+      return n || path;
+    }
+
+    async function getSelectedPath(): Promise<string | null> {
+      let fullPath: string;
+      if (selectedFile) {
+        fullPath = selectedFile;
+      } else {
+        const name = fileNameInput.value.trim();
+        if (!name) {
+          if (options?.save) {
+            shellModal("info", Symbol(), "No Filename", "Please enter a filename.");
+          }
+          return null;
         }
-        return null;
+        fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
       }
-      const fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
+      // selecting a .lnk returns its fully resolved target (or the path it
+      // should've resolved to, so the caller can handle a broken link).
+      if (isShortcutFile(fullPath)) {
+        const resolved = await fullyResolveShortcut(fullPath);
+        fullPath = resolved.target;
+      }
       if (directory && !fs.isDirectory(fullPath)) {
         shellModal("info", Symbol(), "Not a Folder", `"${fullPath}" is not a folder.`);
         return null;
@@ -868,14 +908,18 @@ async function openShellPicker(
     filterSelect.addEventListener("change", () => renderDir(currentPath));
 
     okBtn.addEventListener("click", () => {
-      const path = getSelectedPath();
-      if (path) done(path);
+      void (async () => {
+        const path = await getSelectedPath();
+        if (path) done(path);
+      })();
     });
 
     fileNameInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
-        const path = getSelectedPath();
-        if (path) done(path);
+        void (async () => {
+          const path = await getSelectedPath();
+          if (path) done(path);
+        })();
       }
     });
 
@@ -1000,6 +1044,7 @@ export async function launchAppEntry(appKey: string, entryFn: string, filename?:
       },
       "test-app": () => launchBuiltin("Test App", () => import("../SysApps/test-app")),
       "control-panel": () => launchBuiltin("Control Panel", () => import("../SysApps/control-panel")),
+      "shortcut-wizard": () => launchBuiltin("Shortcut Wizard", () => import("../SysApps/shortcut-wizard")),
     };
 
     const runner = builtinRunners[appKey];

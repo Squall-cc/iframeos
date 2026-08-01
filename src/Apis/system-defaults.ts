@@ -4,9 +4,10 @@
 // launcher contents, desktop layout, and theme. resetSystem() wipes the
 // registry + filesystem and then re-seeds everything.
 
-import type { LauncherAppEntry } from "./Launcher";
 import { FileSystemAccess } from "./FileSystemApi";
+import type { LauncherAppEntry } from "./Launcher";
 import { RegistryInstanceAccess } from "./RegistryApi";
+import { TRASH_DIR, SHORTCUT_EXT } from "./Shortcuts";
 
 export const APPS_REG_PREFIX = "InternalSystem/Apps";
 export const CLASSES_ROOT_PREFIX = "InternalSystem/ClassesRoot";
@@ -55,6 +56,12 @@ export const BUILTIN_APPS: BuiltinAppDef[] = [
   { key: "file-explorer", name: "File Explorer", description: "Browse files", hasFileOpener: true },
   { key: "test-app", name: "Test App", description: "Tests all features", startMenu: false },
   { key: "control-panel", name: "Control Panel", description: "System settings and reset" },
+  {
+    key: "shortcut-wizard",
+    name: "Shortcut Wizard",
+    description: "Create shortcuts to files and folders",
+    startMenu: false,
+  },
 ];
 
 export const DEFAULT_LAUNCHER_APPS: LauncherAppEntry[] = [
@@ -78,21 +85,34 @@ export const DEFAULT_CLASS_ROOTS: { ext: string; app: string; entry: string }[] 
 ];
 
 export interface DesktopIcon {
-  app: string;
-  name: string;
+  file: string;
   x: number;
   y: number;
 }
 
-export const DEFAULT_DESKTOP_ICONS: DesktopIcon[] = [
-  { app: "editor", name: "Text Editor", x: 16, y: 16 },
-  { app: "file-explorer", name: "File Explorer", x: 16, y: 112 },
-  { app: "browser", name: "Browser", x: 16, y: 208 },
-  { app: "registry-editor", name: "Registry Editor", x: 16, y: 304 },
-  { app: "app-installer", name: "App Manager", x: 16, y: 400 },
-  { app: "draw", name: "Draw", x: 16, y: 496 },
-  { app: "control-panel", name: "Control Panel", x: 16, y: 592 },
+// the apps seeded onto a fresh desktop as real .lnk files.
+export const DEFAULT_DESKTOP_APPS: { app: string; name: string }[] = [
+  { app: "editor", name: "Text Editor" },
+  { app: "file-explorer", name: "File Explorer" },
+  { app: "browser", name: "Browser" },
+  { app: "registry-editor", name: "Registry Editor" },
+  { app: "app-installer", name: "App Manager" },
+  { app: "draw", name: "Draw" },
+  { app: "control-panel", name: "Control Panel" },
 ];
+
+// positions for the seeded desktop: one column of app shortcuts going down,
+// with the recycle bin at the bottom of the first column.
+export const DEFAULT_DESKTOP_ICONS: DesktopIcon[] = (() => {
+  const icons: DesktopIcon[] = [];
+  let y = 16;
+  for (const app of DEFAULT_DESKTOP_APPS) {
+    icons.push({ file: `${DESKTOP_PATH}/${app.name}${SHORTCUT_EXT}`, x: 16, y });
+    y += 96;
+  }
+  icons.push({ file: TRASH_DIR, x: 16, y });
+  return icons;
+})();
 
 async function writeBuiltinManifests(reg: RegistryInstanceAccess): Promise<void> {
   for (const app of BUILTIN_APPS) {
@@ -144,12 +164,18 @@ function seedDirectories(fs: FileSystemAccess): void {
 }
 
 function seedDesktopFile(fs: FileSystemAccess): void {
-  if (!fs.isFile(DESKTOP_JSON)) {
-    fs.createFile(DESKTOP_JSON);
-    fs.openFile(DESKTOP_JSON).write(
-      JSON.stringify({ icons: DEFAULT_DESKTOP_ICONS }, null, 2),
-    );
+  if (fs.isFile(DESKTOP_JSON)) return;
+  for (const app of DEFAULT_DESKTOP_APPS) {
+    const file = `${DESKTOP_PATH}/${app.name}${SHORTCUT_EXT}`;
+    if (!fs.isFile(file)) {
+      fs.createFile(file);
+      fs.openFile(file).write(JSON.stringify({ app: app.app, name: app.name }));
+    }
   }
+  fs.createFile(DESKTOP_JSON);
+  fs.openFile(DESKTOP_JSON).write(
+    JSON.stringify({ icons: DEFAULT_DESKTOP_ICONS }, null, 2),
+  );
 }
 
 // idempotent boot-time seeding: creates default dirs, writes the builtin app
