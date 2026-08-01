@@ -1,4 +1,5 @@
 import { FileSystemAccess } from "./FileSystemApi";
+import { TRASH_DIR } from "./Shortcuts";
 import { DESKTOP_JSON } from "./system-defaults";
 
 export interface DesktopAppShortcut {
@@ -21,6 +22,8 @@ export const DESKTOP_CHANGED_EVENT = "is-desktop-changed";
 // custom mime type used when dragging items out of the file explorer so the
 // desktop (or anything else) can recognize an internal vfs path.
 export const VFS_DRAG_MIME = "application/x-is-vfs-path";
+// custom mime type used when dragging start menu / app icons around.
+export const APP_DRAG_MIME = "application/x-is-app";
 
 export function isAppShortcut(s: DesktopShortcut): s is DesktopAppShortcut {
   return typeof (s as DesktopAppShortcut).app === "string";
@@ -119,9 +122,10 @@ export async function addAppShortcut(
   name: string,
   x?: number,
   y?: number,
+  opts?: { allowDuplicate?: boolean },
 ): Promise<void> {
   const icons = await readDesktopIcons();
-  if (icons.some((i) => isAppShortcut(i) && i.app === appKey)) return;
+  if (!opts?.allowDuplicate && icons.some((i) => isAppShortcut(i) && i.app === appKey)) return;
   const slot =
     x !== undefined && y !== undefined ? { x, y } : findFreeSlot(icons);
   icons.push({ app: appKey, name, x: slot.x, y: slot.y });
@@ -132,9 +136,10 @@ export async function addFileShortcut(
   filePath: string,
   x?: number,
   y?: number,
+  opts?: { allowDuplicate?: boolean },
 ): Promise<void> {
   const icons = await readDesktopIcons();
-  if (icons.some((i) => isFileShortcut(i) && i.file === filePath)) return;
+  if (!opts?.allowDuplicate && icons.some((i) => isFileShortcut(i) && i.file === filePath)) return;
   const slot =
     x !== undefined && y !== undefined ? { x, y } : findFreeSlot(icons);
   icons.push({ file: filePath, x: slot.x, y: slot.y });
@@ -179,8 +184,55 @@ export async function syncDesktopFiles(): Promise<DesktopShortcut[]> {
     cleaned.push({ file: p, x: slot.x, y: slot.y });
     changed = true;
   }
+  if (!known.has(TRASH_DIR)) {
+    const slot = findFreeSlot(cleaned);
+    cleaned.push({ file: TRASH_DIR, x: slot.x, y: slot.y });
+    changed = true;
+  }
   if (changed) await writeDesktopIcons(cleaned, { emit: false });
   return cleaned;
+}
+
+function desktopItemName(i: DesktopShortcut): string {
+  if (isAppShortcut(i)) return i.name;
+  return i.file.split("/").filter(Boolean).pop() || i.file;
+}
+
+// sorts the desktop icons so the trash comes first, then apps, then folders,
+// then files, each in alphabetical order, and lays them out in a grid.
+export async function arrangeDesktopIcons(): Promise<void> {
+  const fs = new FileSystemAccess();
+  const icons = await readDesktopIcons();
+
+  const rank = (i: DesktopShortcut): number => {
+    if (isFileShortcut(i) && i.file === TRASH_DIR) return 0;
+    if (isAppShortcut(i)) return 1;
+    if (isFileShortcut(i) && fs.isDirectory(i.file)) return 2;
+    return 3;
+  };
+
+  const sorted = icons
+    .slice()
+    .sort(
+      (a, b) =>
+        rank(a) - rank(b) || desktopItemName(a).localeCompare(desktopItemName(b)),
+    );
+
+  const step = 96;
+  let x = 16;
+  let y = 16;
+  const maxX = Math.max(80, window.innerWidth - 96);
+  for (const icon of sorted) {
+    const pos = clampDesktopPosition(x, y);
+    icon.x = pos.x;
+    icon.y = pos.y;
+    x += step;
+    if (x > maxX) {
+      x = 16;
+      y += step;
+    }
+  }
+  await writeDesktopIcons(sorted);
 }
 
 async function moveDirectory(

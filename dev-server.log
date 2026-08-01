@@ -98,3 +98,283 @@ Error: ENOENT: no such file or directory, open 'C:\Users\david\Documents\iframeo
 [2m11:36:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/iSApi.ts[22m
 [2m11:38:14 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/SpaApp.ts[22m
 [2m11:38:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/zip.ts[22m
+[2m12:52:43 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/FileSystemApi.ts[22m
+[2m12:52:43 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/FileSystemApi.ts[22m
+[2m12:53:14 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/DesktopApi.ts[22m
+[2m12:53:22 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/DesktopApi.ts[22m
+[2m12:53:29 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/DesktopApi.ts[22m
+[2m12:53:37 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/DesktopApi.ts[22m
+[2m12:53:49 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/DesktopApi.ts[22m
+[2m12:53:59 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/system-defaults.ts[22m
+[2m12:54:53 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:55:00 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:55:07 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Launcher.tsx[22m
+[2m12:55:13 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Launcher.tsx[22m
+[2m12:56:12 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/SysApps/file-explorer.ts[22m
+[2m12:57:10 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:57:17 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:57:25 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:59:24 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m12:59:34 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m1:00:21 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Desktop.tsx[22m
+[2m1:00:21 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/SysApps/file-explorer.ts[22m
+[2m1:00:21 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Core/Launcher.tsx[22m
+[2m1:06:09 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/FileSystemApi.ts[22m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:10 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+[2m1:06:12 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+C:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts:249:10: ERROR: Expected ";" but found "this"[39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36mC:/Users/david/Documents/iframeos/src/Apis/FileSystemApi.ts[39m:249:10
+[33m  
+  [33mExpected ";" but found "this"[33m
+  247 |      });
+  248 |    }
+  249 |      await this.ready;
+      |            ^
+  250 |      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+  251 |      tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+  [39m
+      at failureErrorWithLog (C:\Users\david\Documents\iframeos\node_modules\esbuild\lib\main.js:1748:15)
+      at C:\Users\david\Documents\iframeos\node_modules\esbuild\lib\main.js:1017:50
+      at responseCallbacks.<computed> (C:\Users\david\Documents\iframeos\node_modules\esbuild\lib\main.js:884:9)
+      at handleIncomingPacket (C:\Users\david\Documents\iframeos\node_modules\esbuild\lib\main.js:939:12)
+      at Socket.readFromStdout (C:\Users\david\Documents\iframeos\node_modules\esbuild\lib\main.js:862:7)
+      at Socket.emit (node:events:509:28)
+      at addChunk (node:internal/streams/readable:563:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+      at Readable.push (node:internal/streams/readable:394:5)
+      at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+[2m1:06:27 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/Apis/FileSystemApi.ts[22m

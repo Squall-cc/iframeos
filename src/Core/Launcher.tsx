@@ -3,10 +3,11 @@ import "./Launcher.css";
 import type { Component } from "solid-js";
 import { createMemo, createResource, createSignal, For, Show, onCleanup, onMount } from "solid-js";
 
+import { getAppIconUrl } from "../Apis/appIcon";
+import { APP_DRAG_MIME } from "../Apis/DesktopApi";
+import { getAppInfo, getAllInstalledApps, getInstalledAppType, launchRawApp, launchSpaApp } from "../Apis/iSApi";
 import * as launcherApi from "../Apis/Launcher";
 import type { LauncherAppEntry } from "../Apis/Launcher";
-import { getAppInfo, getAllInstalledApps, getInstalledAppType, launchRawApp, launchSpaApp } from "../Apis/iSApi";
-import { getAppIconUrl } from "../Apis/appIcon";
 import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
 import controlPanel from "../SysApps/control-panel";
@@ -149,7 +150,16 @@ function LauncherButton(props: { entry: LauncherItem; onOpen: () => void }) {
   });
 
   return (
-    <button class="launcher-app" onClick={props.onOpen}>
+    <button
+      class="launcher-app"
+      onClick={props.onOpen}
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer!.setData(APP_DRAG_MIME, props.entry.key);
+        e.dataTransfer!.setData("text/plain", props.entry.name);
+        e.dataTransfer!.effectAllowed = "copy";
+      }}
+    >
       <Show when={iconUrl()}>
         <img src={iconUrl()} alt="" draggable={false} />
       </Show>

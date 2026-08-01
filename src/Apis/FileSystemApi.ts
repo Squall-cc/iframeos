@@ -18,6 +18,19 @@ const FS_META_KEY = "VFS_METADATA";
 const FS_DB_NAME = "VFS_DATA_DB";
 const FS_DB_STORE = "files";
 
+// fired whenever a higher-level operation moves/creates/deletes vfs entries so
+// open views (desktop, file explorer) can refresh themselves.
+export const VFS_CHANGED_EVENT = "is-vfs-changed";
+
+export function emitVfsChanged(): void {
+  window.dispatchEvent(new CustomEvent(VFS_CHANGED_EVENT));
+}
+
+export function onVfsChanged(fn: () => void): () => void {
+  window.addEventListener(VFS_CHANGED_EVENT, fn);
+  return () => window.removeEventListener(VFS_CHANGED_EVENT, fn);
+}
+
 function normalizePath(path: string): string {
   if (!path) return "/";
   const parts = path.split("/").filter(Boolean);
@@ -163,6 +176,9 @@ class MetadataStore {
 class DataStore {
   private db: IDBDatabase | null = null;
   private ready: Promise<void>;
+  // serializes write/delete operations so that fire-and-forget writers (e.g.
+  // createFile's empty init write) can never land after a later real write.
+  private writeChain: Promise<void> = Promise.resolve();
 
   constructor() {
     this.ready = new Promise((resolve, reject) => {
@@ -181,12 +197,23 @@ class DataStore {
     });
   }
 
-  async write(path: string, data: Blob | string): Promise<void> {
-    await this.ready;
-    const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
-    const store = tx.objectStore(FS_DB_STORE);
-    const blob = typeof data === "string" ? new Blob([data]) : data;
-    store.put({ path: normalizePath(path), data: blob });
+  private chain(task: () => Promise<void>): Promise<void> {
+    this.writeChain = this.writeChain.then(task, task);
+    return this.writeChain;
+  }
+
+  write(path: string, data: Blob | string): Promise<void> {
+    return this.chain(async () => {
+      await this.ready;
+      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+      const store = tx.objectStore(FS_DB_STORE);
+      const blob = typeof data === "string" ? new Blob([data]) : data;
+      await new Promise<void>((resolve, reject) => {
+        const req = store.put({ path: normalizePath(path), data: blob });
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    });
   }
 
   async read(path: string): Promise<Blob | null> {
@@ -209,9 +236,15 @@ class DataStore {
   }
 
   async delete(path: string): Promise<void> {
-    await this.ready;
-    const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
-    tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+    await this.chain(async () => {
+      await this.ready;
+      const tx = this.db!.transaction(FS_DB_STORE, "readwrite");
+      await new Promise<void>((resolve, reject) => {
+        const req = tx.objectStore(FS_DB_STORE).delete(normalizePath(path));
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    });
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {

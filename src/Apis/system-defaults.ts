@@ -31,6 +31,7 @@ export const DEFAULT_DIRECTORIES = [
   "/videos",
   "/3dobjects",
   "/desktop",
+  "/trash",
 ];
 
 export interface BuiltinAppDef {
