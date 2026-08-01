@@ -28,19 +28,37 @@
   flex: 1;
   max-width: 200px;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 3px;
   color: #fff;
   font-family: "Segoe UI", sans-serif;
   font-size: 11px;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   padding: 2px 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
+}
+
+.taskbar-window img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.taskbar-window span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .taskbar-window:hover {

@@ -49,3 +49,96 @@ body {
   z-index: 999999;
   pointer-events: none;
 }
+
+.modal-blocker {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+#desktop {
+  position: fixed;
+  inset: 0 0 40px 0;
+  z-index: 0;
+  user-select: none;
+}
+
+.desktop-shortcut {
+  position: absolute;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 2px;
+  border-radius: 3px;
+  cursor: default;
+  text-align: center;
+}
+
+.desktop-shortcut img {
+  width: 40px;
+  height: 40px;
+  image-rendering: auto;
+  pointer-events: none;
+}
+
+.desktop-shortcut span {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.desktop-shortcut:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.desktop-shortcut.selected {
+  background: rgba(0, 120, 212, 0.25);
+  outline: 1px solid rgba(0, 120, 212, 0.6);
+}
+
+.desktop-shortcut i {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+.desktop-shortcut .fa-folder {
+  color: #ffd34d;
+}
+
+.desktop-shortcut .fa-file {
+  color: #f0f0f0;
+}
+
+#desktop.desktop-drop-active {
+  box-shadow: inset 0 0 0 2px rgba(0, 120, 212, 0.6);
+}
+
+#desktop.desktop-drop-active::after {
+  content: "Drop files onto the desktop";
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 3px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+

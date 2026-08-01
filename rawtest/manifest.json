@@ -6,5 +6,7 @@
   "type": "raw",
   "entryModule": "index.html",
   "handlerModule": "handler.html",
-  "fileassoc": [".test1", ".test2"]
+  "fileassoc": [".test1", ".test2"],
+  "icon": "icon.png",
+  "startMenu": false
 }

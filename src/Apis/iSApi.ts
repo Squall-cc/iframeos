@@ -11,15 +11,20 @@ import {
   setMinSize,
   getDimensions,
   setDimensions,
-  getPosition,
   setPosition,
+  getPosition,
   setCenter,
   getCorners,
   getSymbolByHWnd,
   getMousePositionRelativeToWindow,
   getCurrentMousePosition,
   spawn as spawnWindow,
+  spawnModal,
+  onWindowClose,
+  setWindowIcon,
 } from "../Core/windowhelpers";
+
+import { getAppIconUrl } from "./appIcon";
 import { editFile } from "../SysApps/editor";
 
 import { FileSystemAccess } from "./FileSystemApi";
@@ -190,74 +195,136 @@ export type ShellModalType = "error" | "info" | "warn" | "yesno" | "abortretryca
 
 export type ShellModalResult = "ok" | "abort" | "retry" | "cancel" | "yes" | "no";
 
+const MODAL_BASE_STYLE =
+  "box-sizing:border-box;display:flex;flex-direction:column;padding:14px;gap:8px;font-family:Segoe UI,sans-serif;font-size:12px;overflow:auto;";
+
+const MODAL_BUTTON_STYLE =
+  "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
+
+function openModalWindow<T>(
+  title: string,
+  parent: symbol | undefined,
+  build: (dialog: HTMLDivElement, done: (result: T) => void) => void,
+  defaultResult: T,
+): Promise<T> {
+  return new Promise((resolve) => {
+    let dialog!: HTMLDivElement;
+    let settled = false;
+    const settle = (result: T) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    const hwnd = spawnModal(title, parent, (hwnd) => {
+      dialog = document.createElement("div");
+      dialog.style.cssText = MODAL_BASE_STYLE;
+      setContent(hwnd, dialog);
+      onWindowClose(hwnd, () => settle(defaultResult));
+      build(dialog, (result) => {
+        settle(result);
+        closeWindow(hwnd);
+      });
+    });
+    // the window element only mounts after the store updates, so size it once
+    // the layout has settled. .window-body uses flex-basis 0, which means the
+    // window starts at its minimum size and clips the dialog; grow it to the
+    // dialog's intrinsic size instead.
+    sizeModalToContent(hwnd, dialog);
+  });
+}
+
+function sizeModalToContent(hwnd: symbol, dialog: HTMLDivElement): void {
+  const deadline = window.performance.now() + 2000;
+  const tick = () => {
+    const dims = getDimensions(hwnd);
+    const body = dialog.parentElement;
+    if (dims && body && dialog.offsetWidth > 0) {
+      const width =
+        Math.max(dialog.offsetWidth, dialog.scrollWidth) +
+        (dims.width - body.offsetWidth);
+      const height =
+        Math.max(dialog.offsetHeight, dialog.scrollHeight) +
+        (dims.height - body.offsetHeight);
+      setDimensions(hwnd, { width, height });
+      return;
+    }
+    if (window.performance.now() < deadline) {
+      window.requestAnimationFrame(tick);
+    }
+  };
+  window.requestAnimationFrame(tick);
+}
+
 export function shellModal(
   type: ShellModalType,
-  _hwnd: symbol,
+  _hwnd: symbol | undefined,
   title: string,
   content: string,
 ): Promise<ShellModalResult> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+  const parent = typeof _hwnd === "symbol" ? _hwnd : undefined;
+  const defaultResult: ShellModalResult =
+    type === "yesno"
+      ? "no"
+      : type === "abortretrycancel" || type === "retrycancel"
+        ? "cancel"
+        : "ok";
 
-    const dialog = document.createElement("div");
-    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:320px;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;";
+  return openModalWindow<ShellModalResult>(
+    title,
+    parent,
+    (dialog, done) => {
+      dialog.style.minWidth = "320px";
+      dialog.style.maxWidth = "480px";
 
-    const titleEl = document.createElement("div");
-    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px;";
-    titleEl.textContent = title;
-    dialog.appendChild(titleEl);
+      const contentEl = document.createElement("div");
+      contentEl.style.cssText =
+        "font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;";
+      contentEl.textContent = content;
+      dialog.appendChild(contentEl);
 
-    const contentEl = document.createElement("div");
-    contentEl.style.cssText = "margin-bottom:16px;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;";
-    contentEl.textContent = content;
-    dialog.appendChild(contentEl);
+      const btnRow = document.createElement("div");
+      btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
 
-    const btnRow = document.createElement("div");
-    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
-
-    const buttons: { label: string; value: ShellModalResult }[] = [];
-    switch (type) {
-      case "error":
-      case "info":
-      case "warn":
-        buttons.push({ label: "OK", value: "ok" });
-        break;
-      case "yesno":
-        buttons.push({ label: "Yes", value: "yes" });
-        buttons.push({ label: "No", value: "no" });
-        break;
-      case "abortretrycancel":
-        buttons.push({ label: "Abort", value: "abort" });
-        buttons.push({ label: "Retry", value: "retry" });
-        buttons.push({ label: "Cancel", value: "cancel" });
-        break;
-      case "retrycancel":
-        buttons.push({ label: "Retry", value: "retry" });
-        buttons.push({ label: "Cancel", value: "cancel" });
-        break;
-    }
-
-    for (const btn of buttons) {
-      const el = document.createElement("button");
-      el.textContent = btn.label;
-      el.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
-      if (btn.value === "ok" || btn.value === "yes" || btn.value === "retry") {
-        el.style.border = "1px solid rgba(0,100,200,0.5)";
-        el.style.background = "rgba(0,100,200,0.1)";
-        el.style.fontWeight = "600";
+      const buttons: { label: string; value: ShellModalResult }[] = [];
+      switch (type) {
+        case "error":
+        case "info":
+        case "warn":
+          buttons.push({ label: "OK", value: "ok" });
+          break;
+        case "yesno":
+          buttons.push({ label: "Yes", value: "yes" });
+          buttons.push({ label: "No", value: "no" });
+          break;
+        case "abortretrycancel":
+          buttons.push({ label: "Abort", value: "abort" });
+          buttons.push({ label: "Retry", value: "retry" });
+          buttons.push({ label: "Cancel", value: "cancel" });
+          break;
+        case "retrycancel":
+          buttons.push({ label: "Retry", value: "retry" });
+          buttons.push({ label: "Cancel", value: "cancel" });
+          break;
       }
-      el.addEventListener("click", () => {
-        overlay.remove();
-        resolve(btn.value);
-      });
-      btnRow.appendChild(el);
-    }
 
-    dialog.appendChild(btnRow);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-  });
+      for (const btn of buttons) {
+        const el = document.createElement("button");
+        el.textContent = btn.label;
+        el.style.cssText = MODAL_BUTTON_STYLE;
+        if (btn.value === "ok" || btn.value === "yes" || btn.value === "retry") {
+          el.style.border = "1px solid rgba(0,100,200,0.5)";
+          el.style.background = "rgba(0,100,200,0.1)";
+          el.style.fontWeight = "600";
+        }
+        el.addEventListener("click", () => done(btn.value));
+        btnRow.appendChild(el);
+      }
+
+      dialog.appendChild(btnRow);
+      btnRow.querySelector("button")?.focus();
+    },
+    defaultResult,
+  );
 }
 
 export type ShellAskFieldType =
@@ -306,233 +373,240 @@ export function shellAsk(
   content?: string,
   options?: { buttons?: ShellAskButtons },
 ): Promise<ShellAskResult> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+  return openModalWindow<ShellAskResult>(
+    title,
+    undefined,
+    (dialog, done) => {
+      dialog.style.minWidth = "340px";
+      dialog.style.maxWidth = "480px";
 
-    const dialog = document.createElement("div");
-    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:340px;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;";
+      if (content) {
+        const contentEl = document.createElement("div");
+        contentEl.style.cssText =
+          "font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;";
+        contentEl.textContent = content;
+        dialog.appendChild(contentEl);
+      }
 
-    const titleEl = document.createElement("div");
-    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px;";
-    titleEl.textContent = title;
-    dialog.appendChild(titleEl);
+      const fieldInputs: Record<string, HTMLInputElement> = {};
 
-    if (content) {
-      const contentEl = document.createElement("div");
-      contentEl.style.cssText = "margin-bottom:12px;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;";
-      contentEl.textContent = content;
-      dialog.appendChild(contentEl);
-    }
+      const fieldsEl = document.createElement("div");
+      fieldsEl.style.cssText = "display:flex;flex-direction:column;gap:8px;";
 
-    const fieldInputs: Record<string, HTMLInputElement> = {};
-
-    const fieldsEl = document.createElement("div");
-    fieldsEl.style.cssText = "display:flex;flex-direction:column;gap:8px;margin-bottom:16px;";
-
-    for (const field of fields) {
-      const row = document.createElement("label");
-      row.style.cssText = "display:flex;flex-direction:column;gap:3px;font-size:11px;";
-
-      const label = document.createElement("span");
-      label.textContent = field.label ?? field.name;
-      row.appendChild(label);
-
-      const input = document.createElement("input");
-      input.type = field.type;
-      input.name = field.name;
-      if (field.value !== undefined) input.value = field.value;
-      if (field.placeholder !== undefined) input.placeholder = field.placeholder;
-      if (field.min !== undefined) input.min = String(field.min);
-      if (field.max !== undefined) input.max = String(field.max);
-      if (field.step !== undefined) input.step = String(field.step);
-      if (field.required) input.required = true;
-      input.style.cssText = "padding:4px 6px;font-size:12px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;font-family:Segoe UI,sans-serif;";
-      row.appendChild(input);
-      fieldsEl.appendChild(row);
-      fieldInputs[field.name] = input;
-    }
-
-    dialog.appendChild(fieldsEl);
-
-    const btnRow = document.createElement("div");
-    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
-
-    const okBtn = document.createElement("button");
-    okBtn.textContent = "OK";
-    okBtn.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;font-size:11px;";
-    okBtn.addEventListener("click", () => {
       for (const field of fields) {
-        if (field.required && !fieldInputs[field.name].value) {
-          fieldInputs[field.name].focus();
-          return;
+        const row = document.createElement("label");
+        row.style.cssText = "display:flex;flex-direction:column;gap:3px;font-size:11px;";
+
+        const label = document.createElement("span");
+        label.textContent = field.label ?? field.name;
+        row.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = field.type;
+        input.name = field.name;
+        if (field.value !== undefined) input.value = field.value;
+        if (field.placeholder !== undefined) input.placeholder = field.placeholder;
+        if (field.min !== undefined) input.min = String(field.min);
+        if (field.max !== undefined) input.max = String(field.max);
+        if (field.step !== undefined) input.step = String(field.step);
+        if (field.required) input.required = true;
+        input.style.cssText = "padding:4px 6px;font-size:12px;border:1px solid rgba(0,0,0,0.2);border-radius:2px;font-family:Segoe UI,sans-serif;";
+        row.appendChild(input);
+        fieldsEl.appendChild(row);
+        fieldInputs[field.name] = input;
+      }
+
+      dialog.appendChild(fieldsEl);
+
+      const btnRow = document.createElement("div");
+      btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:8px;";
+
+      const okBtn = document.createElement("button");
+      okBtn.textContent = "OK";
+      okBtn.style.cssText = "padding:4px 16px;cursor:pointer;border:1px solid rgba(0,100,200,0.5);border-radius:2px;background:rgba(0,100,200,0.1);font-weight:600;font-size:11px;";
+      okBtn.addEventListener("click", () => {
+        for (const field of fields) {
+          if (field.required && !fieldInputs[field.name].value) {
+            fieldInputs[field.name].focus();
+            return;
+          }
         }
-      }
-      const values: Record<string, string> = {};
-      for (const field of fields) {
-        values[field.name] = fieldInputs[field.name].value;
-      }
-      overlay.remove();
-      resolve({ button: "ok", values });
-    });
-    btnRow.appendChild(okBtn);
-
-    function cancel() {
-      overlay.remove();
-      resolve({ button: "cancel", values: {} });
-    }
-
-    if ((options?.buttons ?? "ok") === "okcancel") {
-      const cancelBtn = document.createElement("button");
-      cancelBtn.textContent = "Cancel";
-      cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
-      cancelBtn.addEventListener("click", cancel);
-      btnRow.appendChild(cancelBtn);
-    }
-
-    dialog.appendChild(btnRow);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-
-    for (const input of Object.values(fieldInputs)) {
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") okBtn.click();
-        if (e.key === "Escape") cancel();
+        const values: Record<string, string> = {};
+        for (const field of fields) {
+          values[field.name] = fieldInputs[field.name].value;
+        }
+        done({ button: "ok", values });
       });
-    }
+      btnRow.appendChild(okBtn);
 
-    const first = fields[0] ? fieldInputs[fields[0].name] : undefined;
-    first?.focus();
-  });
+      function cancel() {
+        done({ button: "cancel", values: {} });
+      }
+
+      if ((options?.buttons ?? "ok") === "okcancel") {
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
+        cancelBtn.addEventListener("click", cancel);
+        btnRow.appendChild(cancelBtn);
+      }
+
+      dialog.appendChild(btnRow);
+      okBtn.focus();
+
+      for (const input of Object.values(fieldInputs)) {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") okBtn.click();
+          if (e.key === "Escape") cancel();
+        });
+      }
+
+      const first = fields[0] ? fieldInputs[fields[0].name] : undefined;
+      first?.focus();
+    },
+    { button: "cancel", values: {} },
+  );
 }
 
 function showAppPicker(
   title: string,
   ext: string,
 ): Promise<{ appKey: string; entry: string } | null> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+  return openModalWindow<{ appKey: string; entry: string } | null>(
+    title,
+    undefined,
+    (dialog, done) => {
+      dialog.style.minWidth = "400px";
+      dialog.style.maxHeight = "80vh";
 
-    const dialog = document.createElement("div");
-    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;max-height:80vh;display:flex;flex-direction:column;";
+      const list = document.createElement("div");
+      list.style.cssText = "flex:1;overflow-y:auto;min-height:220px;border:1px solid rgba(0,0,0,0.1);border-radius:2px;margin-bottom:8px;";
 
-    const titleEl = document.createElement("div");
-    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;";
-    titleEl.textContent = title;
-    dialog.appendChild(titleEl);
+      function cancel() { done(null); }
 
-    const list = document.createElement("div");
-    list.style.cssText = "flex:1;overflow-y:auto;margin-bottom:8px;border:1px solid rgba(0,0,0,0.1);border-radius:2px;";
+      async function renderAppListView() {
+        list.innerHTML = "";
+        list.prepend(
+          (() => {
+            const titleEl = document.createElement("div");
+            titleEl.style.cssText = "font-weight:600;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,0.1);";
+            titleEl.textContent = title;
+            return titleEl;
+          })(),
+        );
 
-    function cancel() { overlay.remove(); resolve(null); }
+        try {
+          const reg = new RegistryInstanceAccess();
+          const indexRecord = await reg._load(APP_INDEX_PATH);
+          const allApps = (indexRecord?.values["list"] as Array<{ key: string; name: string }>) ?? [];
 
-    async function renderAppListView() {
-      list.innerHTML = "";
-      titleEl.textContent = title;
+          const builtinApps = [
+            { key: "hi", name: "hi" },
+            { key: "hello", name: "hello" },
+            { key: "draw", name: "draw" },
+            { key: "launch", name: "launch" },
+            { key: "browser", name: "browser" },
+            { key: "editor", name: "Text Editor" },
+            { key: "registry-editor", name: "Registry Editor" },
+            { key: "app-installer", name: "App Manager" },
+            { key: "file-explorer", name: "File Explorer" },
+            { key: "test-app", name: "Test App" },
+          ];
 
-      try {
-        const reg = new RegistryInstanceAccess();
-        const indexRecord = await reg._load(APP_INDEX_PATH);
-        const allApps = (indexRecord?.values["list"] as Array<{ key: string; name: string }>) ?? [];
-
-        const builtinApps = [
-          { key: "hi", name: "hi" },
-          { key: "hello", name: "hello" },
-          { key: "draw", name: "draw" },
-          { key: "launch", name: "launch" },
-          { key: "browser", name: "browser" },
-          { key: "editor", name: "Text Editor" },
-          { key: "registry-editor", name: "Registry Editor" },
-          { key: "app-installer", name: "App Manager" },
-          { key: "file-explorer", name: "File Explorer" },
-          { key: "test-app", name: "Test App" },
-        ];
-
-        const allEntries = [...builtinApps];
-        for (const spa of allApps) {
-          if (!allEntries.some((a) => a.key === spa.key)) {
-            allEntries.push({ key: spa.key, name: spa.name });
+          const allEntries = [...builtinApps];
+          for (const spa of allApps) {
+            if (!allEntries.some((a) => a.key === spa.key)) {
+              allEntries.push({ key: spa.key, name: spa.name });
+            }
           }
-        }
 
-        if (allEntries.length === 0) {
-          const empty = document.createElement("div");
-          empty.style.cssText = "padding:12px;text-align:center;color:rgba(0,0,0,0.4);font-size:11px;";
-          empty.textContent = "No apps available";
-          list.appendChild(empty);
-        } else {
-          for (const app of allEntries) {
+          if (allEntries.length === 0) {
+            const empty = document.createElement("div");
+            empty.style.cssText = "padding:12px;text-align:center;color:rgba(0,0,0,0.4);font-size:11px;";
+            empty.textContent = "No apps available";
+            list.appendChild(empty);
+          } else {
+            for (const app of allEntries) {
+              const item = document.createElement("div");
+              item.style.cssText = "padding:6px 8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.05);font-size:11px;";
+              item.textContent = app.name;
+              item.addEventListener("mouseenter", () => { item.style.background = "rgba(0,0,0,0.06)"; });
+              item.addEventListener("mouseleave", () => { item.style.background = ""; });
+              item.addEventListener("click", () => renderMethodView(app.key, app.name));
+              list.appendChild(item);
+            }
+          }
+        } catch (e) {
+          console.error("showAppPicker:", e);
+          cancel();
+        }
+      }
+
+      async function renderMethodView(appKey: string, appName: string) {
+        list.innerHTML = "";
+        const titleEl = document.createElement("div");
+        titleEl.style.cssText = "font-weight:600;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,0.1);";
+        titleEl.textContent = `Select entry point for "${appName}"`;
+        list.appendChild(titleEl);
+
+        const reg = new RegistryInstanceAccess();
+
+        const backItem = document.createElement("div");
+        backItem.style.cssText = "padding:6px 8px;cursor:pointer;font-size:11px;font-weight:600;color:#0078d4;border-bottom:1px solid rgba(0,0,0,0.05);";
+        backItem.textContent = "← Back to apps";
+        backItem.addEventListener("mouseenter", () => { backItem.style.background = "rgba(0,0,0,0.06)"; });
+        backItem.addEventListener("mouseleave", () => { backItem.style.background = ""; });
+        backItem.addEventListener("click", renderAppListView);
+        list.appendChild(backItem);
+
+        try {
+          const methods = await getAppEntryMethods(appKey);
+
+          for (const method of methods) {
             const item = document.createElement("div");
-            item.style.cssText = "padding:6px 8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.05);font-size:11px;";
-            item.textContent = app.name;
+            item.style.cssText = "padding:8px 8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.05);font-size:11px;";
+            item.textContent = method;
             item.addEventListener("mouseenter", () => { item.style.background = "rgba(0,0,0,0.06)"; });
             item.addEventListener("mouseleave", () => { item.style.background = ""; });
-            item.addEventListener("click", () => renderMethodView(app.key, app.name));
+            item.addEventListener("click", async () => {
+              try {
+                if (saveCheck.checked && ext) {
+                  await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", appKey);
+                  await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", method);
+                }
+                done({ appKey, entry: method });
+              } catch (err) {
+                console.error("renderMethodView click:", err);
+              }
+            });
             list.appendChild(item);
           }
+        } catch (e) {
+          console.error("showAppPicker methods:", e);
         }
-      } catch (e) {
-        console.error("showAppPicker:", e);
-        cancel();
       }
-    }
 
-    async function renderMethodView(appKey: string, appName: string) {
-      list.innerHTML = "";
-      titleEl.textContent = `Select entry point for "${appName}"`;
+      const rememberSave = document.createElement("label");
+      rememberSave.style.cssText = "display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:8px;cursor:pointer;";
+      const saveCheck = document.createElement("input");
+      saveCheck.type = "checkbox";
+      saveCheck.checked = true;
+      rememberSave.appendChild(saveCheck);
+      rememberSave.appendChild(document.createTextNode("Save this association for future use"));
 
-      const reg = new RegistryInstanceAccess();
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;align-self:flex-end;";
+      cancelBtn.addEventListener("click", cancel);
 
-      const backItem = document.createElement("div");
-      backItem.style.cssText = "padding:6px 8px;cursor:pointer;font-size:11px;font-weight:600;color:#0078d4;border-bottom:1px solid rgba(0,0,0,0.05);";
-      backItem.textContent = "← Back to apps";
-      backItem.addEventListener("mouseenter", () => { backItem.style.background = "rgba(0,0,0,0.06)"; });
-      backItem.addEventListener("mouseleave", () => { backItem.style.background = ""; });
-      backItem.addEventListener("click", renderAppListView);
-      list.appendChild(backItem);
+      dialog.appendChild(list);
+      dialog.appendChild(rememberSave);
+      dialog.appendChild(cancelBtn);
 
-      try {
-        const methods = await getAppEntryMethods(appKey);
-
-        for (const method of methods) {
-          const item = document.createElement("div");
-          item.style.cssText = "padding:8px 8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.05);font-size:11px;";
-          item.textContent = method;
-          item.addEventListener("mouseenter", () => { item.style.background = "rgba(0,0,0,0.06)"; });
-          item.addEventListener("mouseleave", () => { item.style.background = ""; });
-          item.addEventListener("click", async () => {
-            try {
-              const save = confirm("Save this association for future use?");
-              if (save && ext) {
-                await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "app", appKey);
-                await reg._write(`${CLASSES_ROOT_PREFIX}/${ext}`, "entry", method);
-              }
-              overlay.remove();
-              resolve({ appKey, entry: method });
-            } catch (err) {
-              console.error("renderMethodView click:", err);
-            }
-          });
-          list.appendChild(item);
-        }
-      } catch (e) {
-        console.error("showAppPicker methods:", e);
-      }
-    }
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;align-self:flex-end;";
-    cancelBtn.addEventListener("click", cancel);
-
-    dialog.appendChild(list);
-    dialog.appendChild(cancelBtn);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-
-    renderAppListView();
-  });
+      renderAppListView();
+    },
+    null,
+  );
 }
 
 export interface ShellSelectFileOptions {
@@ -561,21 +635,16 @@ async function openShellPicker(
   options: ShellSelectFileOptions,
   directory: boolean,
 ): Promise<string | null> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000000;";
+  return openModalWindow<string | null>(
+    options?.title ?? (directory ? "Select a folder" : "Select a file"),
+    undefined,
+    (dialog, done) => {
+      dialog.style.minWidth = "580px";
+      dialog.style.minHeight = "420px";
 
-    const dialog = document.createElement("div");
-    dialog.style.cssText = "background:#fff;border-radius:4px;padding:16px;min-width:580px;min-height:420px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Segoe UI,sans-serif;font-size:12px;display:flex;flex-direction:column;";
-
-    const titleEl = document.createElement("div");
-    titleEl.style.cssText = "font-weight:600;margin-bottom:8px;";
-    titleEl.textContent = options?.title ?? (directory ? "Select a folder" : "Select a file");
-    dialog.appendChild(titleEl);
-
-    const pathDisplay = document.createElement("div");
-    pathDisplay.style.cssText = "font-size:11px;padding:3px 6px;background:rgba(0,0,0,0.04);border-radius:2px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-    dialog.appendChild(pathDisplay);
+      const pathDisplay = document.createElement("div");
+      pathDisplay.style.cssText = "font-size:11px;padding:3px 6px;background:rgba(0,0,0,0.04);border-radius:2px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      dialog.appendChild(pathDisplay);
 
     const body = document.createElement("div");
     body.style.cssText = "display:flex;flex:1;overflow:hidden;gap:6px;margin-bottom:8px;";
@@ -653,12 +722,10 @@ async function openShellPicker(
     const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "padding:4px 12px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:#f5f5f5;font-size:11px;";
-    cancelBtn.addEventListener("click", () => { overlay.remove(); resolve(null); });
+    cancelBtn.addEventListener("click", () => done(null));
     bottomRow.appendChild(cancelBtn);
 
     dialog.appendChild(bottomRow);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
 
     let currentPath = "/";
     let selectedFile: string | null = null;
@@ -802,24 +869,20 @@ async function openShellPicker(
 
     okBtn.addEventListener("click", () => {
       const path = getSelectedPath();
-      if (path) {
-        overlay.remove();
-        resolve(path);
-      }
+      if (path) done(path);
     });
 
     fileNameInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         const path = getSelectedPath();
-        if (path) {
-          overlay.remove();
-          resolve(path);
-        }
+        if (path) done(path);
       }
     });
 
     renderDir("/");
-  });
+  },
+    null,
+  );
 }
 
 function extractFunctionNames(code: string): string[] {
@@ -886,7 +949,7 @@ async function getAppEntryMethods(appKey: string): Promise<string[]> {
   return methods.size > 0 ? [...methods] : ["run"];
 }
 
-async function launchAppEntry(appKey: string, entryFn: string, filename?: string): Promise<boolean> {
+export async function launchAppEntry(appKey: string, entryFn: string, filename?: string): Promise<boolean> {
   const reg = new RegistryInstanceAccess();
   const record = await reg._load(`${APPS_REG_PREFIX}/${appKey}`);
   if (!record) return false;
@@ -895,17 +958,48 @@ async function launchAppEntry(appKey: string, entryFn: string, filename?: string
   const appType = manifest?.type || "spa";
 
   if (appType === "builtin") {
+    const launchBuiltin = (title: string, loader: () => Promise<{ default: (h: symbol) => void }>) => {
+      void getAppIconUrl(appKey, undefined).then((iconUrl) => {
+        spawnWindow(title, (hwnd) => {
+          setWindowIcon(hwnd, iconUrl);
+          loader().then((m) => m.default(hwnd));
+        });
+      });
+    };
+
     const builtinRunners: Record<string, (_f?: string) => void> = {
-      editor: (f) => { if (f) editFile(f); },
-      hi: () => { import("../SysApps/hi").then((m) => spawnWindow("hi", m.default)); },
-      hello: () => { import("../SysApps/hello").then((m) => spawnWindow("hello", m.default)); },
-      draw: () => { import("../SysApps/draw").then((m) => spawnWindow("draw", m.default)); },
-      launch: () => { import("../SysApps/launch").then((m) => spawnWindow("launch", m.default)); },
-      browser: () => { import("../SysApps/browser").then((m) => spawnWindow("browser", m.default)); },
-      "registry-editor": () => { import("../SysApps/registry-editor").then((m) => spawnWindow("Registry Editor", m.default)); },
-      "app-installer": () => { import("../SysApps/app-installer").then((m) => spawnWindow("App Installer", m.default)); },
-      "file-explorer": () => { import("../SysApps/file-explorer").then((m) => spawnWindow("File Explorer", m.default)); },
-      "test-app": () => { import("../SysApps/test-app").then((m) => spawnWindow("Test App", m.default)); },
+      editor: (f) => { if (f) editFile(f); else launchBuiltin("Text Editor", () => import("../SysApps/editor")); },
+      hi: () => launchBuiltin("hi", () => import("../SysApps/hi")),
+      hello: () => launchBuiltin("hello", () => import("../SysApps/hello")),
+      draw: () => launchBuiltin("draw", () => import("../SysApps/draw")),
+      launch: () => launchBuiltin("launch", () => import("../SysApps/launch")),
+      browser: () => launchBuiltin("browser", () => import("../SysApps/browser")),
+      "registry-editor": () => launchBuiltin("Registry Editor", () => import("../SysApps/registry-editor")),
+      "app-installer": (f) => {
+        if (f) {
+          void getAppIconUrl(appKey, undefined).then((iconUrl) => {
+            spawnWindow("App Manager", (hwnd) => {
+              setWindowIcon(hwnd, iconUrl);
+              import("../SysApps/app-installer").then((m) =>
+                (m as unknown as { openFile(h: symbol, file: string): void }).openFile(hwnd, f),
+              );
+            });
+          });
+        } else {
+          launchBuiltin("App Manager", () => import("../SysApps/app-installer"));
+        }
+      },
+      "file-explorer": (f) => {
+        if (f) {
+          void import("../SysApps/file-explorer").then((m) =>
+            (m as unknown as { openFolder(p: string): void }).openFolder(f),
+          );
+        } else {
+          launchBuiltin("File Explorer", () => import("../SysApps/file-explorer"));
+        }
+      },
+      "test-app": () => launchBuiltin("Test App", () => import("../SysApps/test-app")),
+      "control-panel": () => launchBuiltin("Control Panel", () => import("../SysApps/control-panel")),
     };
 
     const runner = builtinRunners[appKey];
@@ -1026,6 +1120,8 @@ export interface InstalledAppInfo {
   fileOpener?: string;
   hasFileOpener: boolean;
   fileassoc: string[];
+  icon?: string;
+  startMenu?: boolean;
 }
 
 export async function getAppInfo(appKey: string): Promise<InstalledAppInfo | null> {
@@ -1042,6 +1138,8 @@ export async function getAppInfo(appKey: string): Promise<InstalledAppInfo | nul
         fileOpener?: string;
         hasFileOpener?: boolean;
         fileassoc?: unknown;
+        icon?: unknown;
+        startMenu?: unknown;
       })
     | undefined;
   if (!manifest) return null;
@@ -1062,6 +1160,9 @@ export async function getAppInfo(appKey: string): Promise<InstalledAppInfo | nul
       .filter((e): e is string => typeof e === "string")
       .map(normalizeExtension)
       .filter(Boolean),
+    icon: typeof manifest.icon === "string" ? manifest.icon : undefined,
+    startMenu:
+      typeof manifest.startMenu === "boolean" ? manifest.startMenu : undefined,
   };
 }
 

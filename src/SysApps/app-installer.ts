@@ -14,8 +14,8 @@ import {
   uninstallApp,
 } from "../Apis/iSApi";
 import { installRawAppFromZip } from "../Apis/RawApp";
-import { installSpaFromZip, parseSpaArchive } from "../Apis/SpaApp";
 import type { InstallProgress } from "../Apis/RawApp";
+import { installSpaFromZip, parseSpaArchive } from "../Apis/SpaApp";
 import type { ZipEntry } from "../Apis/zip";
 import { setContent, setMinSize } from "../Core/windowhelpers";
 
@@ -145,6 +145,16 @@ async function verifyPackage(bytes: ArrayBuffer): Promise<VerifyResult> {
 }
 
 export default function run(hwnd: symbol) {
+  startApp(hwnd);
+}
+
+// entry point used when a .spa package in the VFS is opened (double-click in
+// the file explorer): opens the App Manager straight on the verification view.
+export function openFile(hwnd: symbol, filename: string) {
+  startApp(hwnd, filename);
+}
+
+function startApp(hwnd: symbol, initialFile?: string) {
   setMinSize(hwnd, 580, 460);
 
   const container = document.createElement("div");
@@ -360,7 +370,7 @@ export default function run(hwnd: symbol) {
                 ? await installRawAppFromZip(bytes, { fileAssociations: selected }, onProgress)
                 : await installSpaFromZip(bytes, { fileAssociations: selected }, onProgress);
             statusBar.textContent = `Installed "${name}" successfully`;
-            back();
+            showInstalledView();
           } catch (e) {
             statusBar.textContent = `Error: ${(e as Error).message}`;
             progressLabel.textContent = `Error: ${(e as Error).message}`;
@@ -396,28 +406,94 @@ export default function run(hwnd: symbol) {
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = ".spa,.zip";
-    fileInput.style.cssText = "margin-bottom:8px;font-size:11px;";
-    content.appendChild(fileInput);
+    fileInput.style.cssText = "display:none;";
+
+    const pickBtn = document.createElement("button");
+    pickBtn.textContent = "Choose a package...";
+    pickBtn.style.cssText = btnStyle;
+    content.appendChild(pickBtn);
 
     const nextBtn = document.createElement("button");
     nextBtn.textContent = "Next";
-    nextBtn.style.cssText = btnStyle;
+    nextBtn.style.cssText = ghostBtnStyle;
     nextBtn.disabled = true;
 
+    let pickedFile: File | null = null;
+
+    function handleFile(file: File) {
+      pickedFile = file;
+      nextBtn.disabled = false;
+      nextBtn.textContent = `Next (${file.name})`;
+      statusBar.textContent = `${file.name} selected`;
+    }
+
+    // tries the File System Access API first (opens a real dialog on modern
+    // Chrome/Edge); falls back to the native file input for browsers where
+    // the modern picker is unavailable or blocked.
+    async function pickFromHost() {
+      const w = window as Window & {
+        showOpenFilePicker?: (options?: unknown) => Promise<Array<{ getFile(): Promise<File> }>>;
+      };
+      if (typeof w.showOpenFilePicker === "function") {
+        try {
+          const handles = await w.showOpenFilePicker({
+            multiple: false,
+            types: [
+              {
+                description: "App Packages",
+                accept: { "application/zip": [".spa", ".zip"] },
+              },
+            ],
+          });
+          if (handles[0]) {
+            handleFile(await handles[0].getFile());
+            return;
+          }
+        } catch (e) {
+          if ((e as Error).name === "AbortError") return; // user canceled
+        }
+      }
+      fileInput.click();
+    }
+
+    pickBtn.addEventListener("click", pickFromHost);
     fileInput.addEventListener("change", () => {
-      nextBtn.disabled = !fileInput.files || fileInput.files.length === 0;
+      const f = fileInput.files?.[0];
+      if (f) handleFile(f);
     });
 
     nextBtn.addEventListener("click", () => {
-      const file = fileInput.files?.[0];
-      if (!file) {
+      if (!pickedFile) {
         statusBar.textContent = "Select a package first";
         return;
       }
       statusBar.textContent = "Reading archive...";
-      file.arrayBuffer().then((bytes) => showConfirmView(bytes, file.name, showHostView));
+      pickedFile.arrayBuffer().then((bytes) => showConfirmView(bytes, pickedFile!.name, showHostView));
     });
     content.appendChild(nextBtn);
+
+    const dropZone = document.createElement("div");
+    dropZone.style.cssText = "flex:1;border:2px dashed rgba(0,0,0,0.2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(0,0,0,0.4);min-height:120px;transition:background .15s,border-color .15s;";
+    dropZone.textContent = "or drop a .spa / .zip file here";
+    content.appendChild(dropZone);
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = "#0078d4";
+      dropZone.style.background = "rgba(0,120,212,0.08)";
+    });
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.style.borderColor = "rgba(0,0,0,0.2)";
+      dropZone.style.background = "";
+    });
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = "rgba(0,0,0,0.2)";
+      dropZone.style.background = "";
+      const f = e.dataTransfer?.files?.[0];
+      if (f) handleFile(f);
+      else statusBar.textContent = "No file found in the drop";
+    });
   }
 
   function showGuestView() {
@@ -646,6 +722,27 @@ export default function run(hwnd: symbol) {
   installedTab.addEventListener("click", showInstalledView);
 
   showHostView();
+
+  if (initialFile) {
+    statusBar.textContent = `Reading ${initialFile}...`;
+    const fs = new FileSystemAccess();
+    fs.data
+      .read(initialFile)
+      .then(async (blob) => {
+        if (!blob) {
+          statusBar.textContent = `Error: could not read "${initialFile}"`;
+          return;
+        }
+        showConfirmView(
+          await blob.arrayBuffer(),
+          initialFile.split("/").pop() || initialFile,
+          showGuestView,
+        );
+      })
+      .catch((e) => {
+        statusBar.textContent = `Error: ${(e as Error).message}`;
+      });
+  }
 
   setContent(hwnd, container);
 }

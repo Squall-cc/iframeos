@@ -30,7 +30,7 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
   if (typeof DecompressionStream === "undefined") {
     throw new Error("DecompressionStream is not supported in this browser");
   }
-  const stream = new Blob([data])
+  const stream = new Blob([data as unknown as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());

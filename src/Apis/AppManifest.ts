@@ -17,6 +17,11 @@ export interface SpaManifest {
   fileOpenerModule?: string;
   // file extensions to offer associating with this app on install (e.g. [".txt"])
   fileassoc?: string[];
+  // path to an icon file relative to the app root (optional; defaults to the
+  // system fallback icon)
+  icon?: string;
+  // whether the app should show up in the start menu (default: true)
+  startMenu?: boolean;
 }
 
 // the manifest as stored in the registry (InternalSystem/Apps/{key})
@@ -32,6 +37,8 @@ export interface RegisteredSpaManifest {
   fileOpenerModule?: string;
   fileassoc?: string[];
   hasFileOpener: boolean;
+  icon?: string;
+  startMenu?: boolean;
 }
 
 export interface InstalledAppInfo {

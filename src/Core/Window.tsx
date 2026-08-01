@@ -9,6 +9,8 @@ import {
   savePreMaximizeState,
   getPreMaximizeState,
   deletePreMaximizeState,
+  getPosition,
+  getDimensions,
 } from "./windowhelpers";
 
 interface WindowProps {
@@ -16,6 +18,9 @@ interface WindowProps {
   title: string;
   zIndex: number;
   maximized: boolean;
+  minimized?: boolean;
+  modal?: boolean;
+  parent?: symbol;
   minWidth?: number;
   minHeight?: number;
   active: boolean;
@@ -42,10 +47,24 @@ const Window: ParentComponent<WindowProps> = (props) => {
   onMount(() => {
     const ow = windowthingy.offsetWidth;
     const oh = windowthingy.offsetHeight;
-    windowthingy.style.left =
-      (window.innerWidth - ow) / 2 + "px";
-    windowthingy.style.top =
-      (window.innerHeight - oh) / 2 + "px";
+    if (props.modal && props.parent) {
+      const pos = getPosition(props.parent);
+      const dim = getDimensions(props.parent);
+      if (pos && dim) {
+        windowthingy.style.left =
+          pos.x + (dim.width - ow) / 2 + "px";
+        windowthingy.style.top =
+          pos.y + (dim.height - oh) / 2 + "px";
+      } else {
+        windowthingy.style.left = (window.innerWidth - ow) / 2 + "px";
+        windowthingy.style.top = (window.innerHeight - oh) / 2 + "px";
+      }
+    } else {
+      windowthingy.style.left =
+        (window.innerWidth - ow) / 2 + "px";
+      windowthingy.style.top =
+        (window.innerHeight - oh) / 2 + "px";
+    }
     if (!windowthingy.style.width || windowthingy.style.width === "auto") windowthingy.style.width = ow + "px";
     if (!windowthingy.style.height || windowthingy.style.height === "auto") windowthingy.style.height = oh + "px";
     registerWindowElement(props.hwnd, windowthingy);
@@ -100,6 +119,15 @@ const Window: ParentComponent<WindowProps> = (props) => {
     }
   });
 
+  createEffect(() => {
+    const el = windowthingy;
+    if (props.minimized) {
+      el.classList.add("minimized");
+    } else {
+      el.classList.remove("minimized");
+    }
+  });
+
   function startDrag(e: PointerEvent) {
     if ((e.target as HTMLElement).closest("#windowcontrols")) return;
     props.onfocus?.();
@@ -142,6 +170,7 @@ const Window: ParentComponent<WindowProps> = (props) => {
       <div
         id="window"
         class="window glass active"
+        classList={{ "modal-window": !!props.modal, minimized: !!props.minimized }}
         ref={windowthingy}
         style={{
           "z-index": props.zIndex,
@@ -152,22 +181,33 @@ const Window: ParentComponent<WindowProps> = (props) => {
         <div
           class="title-bar"
           onPointerDown={startDrag}
-          onDblClick={() => props.onmaximize?.()}
+          onDblClick={() => {
+            if (!props.modal) props.onmaximize?.();
+          }}
         >
           <div class="title-bar-text">{props.title}</div>
           <div id="windowcontrols" class="title-bar-controls">
-            <button
-              aria-label="Minimize"
-              onClick={() => props.onminimize?.()}
-            ></button>
-            <button
-              aria-label={props.maximized ? "Restore" : "Maximize"}
-              onClick={() => props.onmaximize?.()}
-            ></button>
-            <button
-              aria-label="Close"
-              onClick={() => props.onclose?.()}
-            ></button>
+            {props.modal ? (
+              <button
+                aria-label="Close"
+                onClick={() => props.onclose?.()}
+              ></button>
+            ) : (
+              <>
+                <button
+                  aria-label="Minimize"
+                  onClick={() => props.onminimize?.()}
+                ></button>
+                <button
+                  aria-label={props.maximized ? "Restore" : "Maximize"}
+                  onClick={() => props.onmaximize?.()}
+                ></button>
+                <button
+                  aria-label="Close"
+                  onClick={() => props.onclose?.()}
+                ></button>
+              </>
+            )}
           </div>
         </div>
         <div class="window-body has-space">{props.children}</div>

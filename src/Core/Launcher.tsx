@@ -1,11 +1,12 @@
 import "./Launcher.css";
 
 import type { Component } from "solid-js";
-import { createResource, For, onCleanup, onMount } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show, onCleanup, onMount } from "solid-js";
 
 import * as launcherApi from "../Apis/Launcher";
 import type { LauncherAppEntry } from "../Apis/Launcher";
-import { getAllInstalledApps, getInstalledAppType, launchRawApp, launchSpaApp } from "../Apis/iSApi";
+import { getAppInfo, getAllInstalledApps, getInstalledAppType, launchRawApp, launchSpaApp } from "../Apis/iSApi";
+import { getAppIconUrl } from "../Apis/appIcon";
 import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
 import controlPanel from "../SysApps/control-panel";
@@ -34,8 +35,15 @@ const builtinApps = new Map([
   ["control-panel", controlPanel],
 ]);
 
-async function getAllApps(): Promise<LauncherAppEntry[]> {
-  const registryApps = await launcherApi.getLauncherApps();
+interface LauncherItem {
+  type: string;
+  key: string;
+  name: string;
+  startMenu: boolean;
+}
+
+async function getAllApps(): Promise<LauncherItem[]> {
+  const registryApps: LauncherAppEntry[] = await launcherApi.getLauncherApps();
   const indexApps = await getAllInstalledApps();
   for (const app of indexApps) {
     if (registryApps.some((a) => a.key === app.key)) continue;
@@ -46,10 +54,21 @@ async function getAllApps(): Promise<LauncherAppEntry[]> {
       name: app.name,
     });
   }
-  return registryApps;
+
+  const items: LauncherItem[] = [];
+  for (const entry of registryApps) {
+    const info = await getAppInfo(entry.key);
+    items.push({
+      type: entry.type,
+      key: entry.key,
+      name: entry.name,
+      startMenu: info?.startMenu ?? true,
+    });
+  }
+  return items.filter((i) => i.startMenu);
 }
 
-function open(entry: LauncherAppEntry, onClose?: () => void) {
+function open(entry: LauncherItem, onClose?: () => void) {
   if (entry.type === "builtin") {
     const run = builtinApps.get(entry.key);
     if (run) spawn(entry.name, run);
@@ -74,7 +93,16 @@ interface LauncherProps {
 
 const Launcher: Component<LauncherProps> = (props) => {
   const [apps] = createResource(getAllApps);
+  const [query, setQuery] = createSignal("");
   let launcherRef!: HTMLDivElement;
+  let searchRef!: HTMLInputElement;
+
+  const filtered = createMemo(() => {
+    const q = query().trim().toLowerCase();
+    const list = apps() ?? [];
+    if (!q) return list;
+    return list.filter((a) => a.name.toLowerCase().includes(q) || a.key.toLowerCase().includes(q));
+  });
 
   onMount(() => {
     const handler = (e: MouseEvent) => {
@@ -87,6 +115,7 @@ const Launcher: Component<LauncherProps> = (props) => {
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("keydown", keyHandler);
+    searchRef?.focus();
     onCleanup(() => {
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("keydown", keyHandler);
@@ -95,15 +124,38 @@ const Launcher: Component<LauncherProps> = (props) => {
 
   return (
     <div id="launcher" ref={launcherRef}>
-      <For each={apps() ?? []}>
-        {(entry) => (
-          <button onClick={() => open(entry, props.onClose)}>
-            {entry.name}
-          </button>
-        )}
-      </For>
+      <div class="launcher-search">
+        <input
+          ref={searchRef}
+          type="text"
+          placeholder="Search apps..."
+          value={query()}
+          onInput={(e) => setQuery(e.currentTarget.value)}
+        />
+      </div>
+      <div class="launcher-grid">
+        <Show when={filtered().length === 0} fallback={<For each={filtered()}>{(entry) => <LauncherButton entry={entry} onOpen={() => open(entry, props.onClose)} />}</For>}>
+          <div class="launcher-empty">No apps found</div>
+        </Show>
+      </div>
     </div>
   );
 };
+
+function LauncherButton(props: { entry: LauncherItem; onOpen: () => void }) {
+  const [iconUrl, setIconUrl] = createSignal<string | undefined>(undefined);
+  onMount(async () => {
+    setIconUrl(await getAppIconUrl(props.entry.key, undefined));
+  });
+
+  return (
+    <button class="launcher-app" onClick={props.onOpen}>
+      <Show when={iconUrl()}>
+        <img src={iconUrl()} alt="" draggable={false} />
+      </Show>
+      <span>{props.entry.name}</span>
+    </button>
+  );
+}
 
 export default Launcher;

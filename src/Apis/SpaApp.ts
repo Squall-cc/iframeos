@@ -10,9 +10,10 @@
 // from the VFS, transpiled, and evaluated inside a CommonJS wrapper whose
 // factory receives the injected API bindings.
 
-import { spawn } from "../Core/windowhelpers";
+import { spawn, setWindowIcon } from "../Core/windowhelpers";
 
 import type { RegisteredSpaManifest } from "./AppManifest";
+import { getAppIconUrl } from "./appIcon";
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
 import { unzip, findManifestEntry, type ZipEntry } from "./zip";
@@ -304,6 +305,8 @@ export async function installSpaFromZip(
   const entryModule = (raw["entryModule"] as string | undefined) || DEFAULT_ENTRY_MODULE;
   const fileOpener = raw["fileOpener"] as string | undefined;
   const fileOpenerModule = (raw["fileOpenerModule"] as string | undefined) || entryModule;
+  const icon = raw["icon"] as string | undefined;
+  const startMenu = raw["startMenu"] as boolean | undefined;
 
   if (!key || !name || !entryPoint) {
     throw new Error(".spa manifest must include 'key', 'name', and 'entryPoint'");
@@ -328,7 +331,7 @@ export async function installSpaFromZip(
     }
     ensureDirs(fs, dest);
     fs.createFile(dest);
-    const blob = new Blob([entry.data]);
+    const blob = new Blob([entry.data as unknown as BlobPart]);
     await fs.data.write(dest, blob);
     fs.updateFileMeta(dest, blob);
     done++;
@@ -349,6 +352,8 @@ export async function installSpaFromZip(
     fileOpenerModule,
     fileassoc: fileAssociations,
     hasFileOpener: !!fileOpener,
+    icon,
+    startMenu,
   };
 
   const reg = new RegistryInstanceAccess();
@@ -440,8 +445,10 @@ export async function launchSpaEntry(
 
   const WindowHandleCtor = api["WindowHandle"] as { new (hwnd: symbol): unknown } | undefined;
   const title = filename ? (filename.split("/").pop() || manifest.name) : manifest.name;
+  const iconUrl = await getAppIconUrl(appKey, manifest.icon);
 
   spawn(title, (hwnd) => {
+    setWindowIcon(hwnd, iconUrl);
     const handle = WindowHandleCtor ? new WindowHandleCtor(hwnd) : hwnd;
     try {
       if (filename) (fn as (f: string, h: unknown) => void)(filename, handle);

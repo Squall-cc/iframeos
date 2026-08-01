@@ -7,5 +7,7 @@
   "entryModule": "main.ts",
   "fileOpener": "openFile",
   "fileOpenerModule": "main.ts",
-  "fileassoc": [".txt", ".md", ".log"]
+  "fileassoc": [".txt", ".md", ".log"],
+  "icon": "icon.png",
+  "startMenu": true
 }

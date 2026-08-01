@@ -3,6 +3,7 @@ import "./Taskbar.css";
 import type { Component } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 
+import { DEFAULT_APP_ICON } from "../Apis/appIcon";
 import Launcher from "./Launcher";
 import TaskbarClock from "./TaskbarClock";
 import TaskbarOrb from "./TaskbarOrb";
@@ -43,6 +44,7 @@ const Taskbar: Component = () => {
         <div class="windows-list">
           <For each={windows}>
             {(w) => {
+              if (w.modal) return null;
               const isActive = w.hwnd === activeWindow();
               return (
                 <button
@@ -50,7 +52,8 @@ const Taskbar: Component = () => {
                   classList={{ active: isActive, minimized: w.minimized }}
                   onClick={() => handleClick(w.hwnd, w.minimized, isActive)}
                 >
-                  {w.title}
+                  <img src={w.icon || DEFAULT_APP_ICON} alt="" draggable={false} />
+                  <span>{w.title}</span>
                 </button>
               );
             }}

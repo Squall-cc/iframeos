@@ -2,6 +2,7 @@ import type { JSX } from "solid-js";
 import { createStore } from "solid-js/store";
 import { ulid } from "ulid";
 
+import { DEFAULT_APP_ICON } from "../Apis/appIcon";
 import { clearWindowCanvas } from "./overlay";
 
 // todo: debug window dragging resizing bottom right
@@ -14,6 +15,9 @@ interface WindowData {
   content?: JSX.Element;
   minWidth?: number;
   minHeight?: number;
+  icon?: string;
+  modal?: boolean; // true when this window is a modal dialog
+  parent?: symbol; // the window that summoned a modal
 }
 let mx = 0;
 let my = 0;
@@ -33,11 +37,28 @@ const [windows, setWindows] = createStore<WindowData[]>([]);
 
 export { windows };
 export type { WindowData };
+
+const closeHandlers = new Map<symbol, () => void>();
+
 export function closeWindow(hwnd: symbol) {
+  const win = windows.find((w) => w.hwnd === hwnd);
+  const handler = closeHandlers.get(hwnd);
+  closeHandlers.delete(hwnd);
   setWindows(windows.filter((w) => w.hwnd !== hwnd));
   windowsmap.delete(hwnd);
   domMap.delete(hwnd);
   clearWindowCanvas(hwnd);
+  handler?.();
+  if (win?.modal && win.parent) {
+    bringupwards(win.parent);
+  }
+}
+
+// registers a callback that fires when a window is closed, before the caller
+// of closeWindow gets control back. used by modal dialogs so the promise they
+// resolve isn't left hanging when the user dismisses the window with the X.
+export function onWindowClose(hwnd: symbol, fn: () => void) {
+  closeHandlers.set(hwnd, fn);
 }
 
 export function registerWindowElement(hwnd: symbol, el: HTMLDivElement) {
@@ -125,10 +146,32 @@ export function getCorners(hwnd: symbol) {
     bottomRight: { x: pos.x + dim.width, y: pos.y + dim.height },
   };
 }
-export const bringupwards = (hwnd: symbol) =>
+
+// a modal window, once open, swallows focus for every other window. the
+// summoner can't be interacted with until the modal is cleared.
+export function anyModalOpen(): boolean {
+  return windows.some((w) => w.modal);
+}
+
+export function getOpenModal(): symbol | undefined {
+  let modal: symbol | undefined;
+  for (const w of windows) {
+    if (w.modal && (!modal || w.z > (windows.find((x) => x.hwnd === modal)?.z ?? -1))) {
+      modal = w.hwnd;
+    }
+  }
+  return modal;
+}
+
+export const bringupwards = (hwnd: symbol) => {
+  if (anyModalOpen() && getOpenModal() !== hwnd) return;
   setWindows((w) => w.hwnd === hwnd, { z: ++topZ, minimized: false });
-export const minimize = (hwnd: symbol) =>
+};
+export const minimize = (hwnd: symbol) => {
+  const w = windows.find((win) => win.hwnd === hwnd);
+  if (w?.modal) return;
   setWindows((w) => w.hwnd === hwnd, "minimized", true);
+};
 
 const preMaximizeState = new Map<symbol, { left: string; top: string; width: string; height: string }>();
 
@@ -148,7 +191,7 @@ export function deletePreMaximizeState(hwnd: symbol) {
 
 export const toggleMaximize = (hwnd: symbol) => {
   const w = windows.find((win) => win.hwnd === hwnd);
-  if (!w) return;
+  if (!w || w.modal) return;
   setWindows((win) => win.hwnd === hwnd, "maximized", !w.maximized);
 };
 export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
@@ -159,9 +202,34 @@ export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
     z: ++topZ,
     minimized: false,
     maximized: false,
+    icon: DEFAULT_APP_ICON,
   });
   windowsmap.set(s, ulid());
   run?.(s);
+  return s;
+}
+
+// opens a modal dialog window parented to `parent` (if given). the rest of the
+// shell is blocked from interaction until it is closed.
+export function spawnModal(
+  title: string,
+  parent?: symbol,
+  run?: (hwnd: symbol) => void,
+) {
+  var s = Symbol();
+  setWindows(windows.length, {
+    hwnd: s,
+    title: title,
+    z: ++topZ,
+    minimized: false,
+    maximized: false,
+    icon: DEFAULT_APP_ICON,
+    modal: true,
+    parent,
+  });
+  windowsmap.set(s, ulid());
+  run?.(s);
+  return s;
 }
 
 export function setMinSize(hwnd: symbol, minWidth?: number, minHeight?: number) {
@@ -171,11 +239,13 @@ export function setMinSize(hwnd: symbol, minWidth?: number, minHeight?: number) 
   setWindows((w) => w.hwnd === hwnd, patch);
 }
 
-export const debug123 = () =>
-  setInterval(
-    () => console.log("windows :" + windows + "; body:" + document.body),
-    1000,
-  );
+export function setTitle(hwnd: symbol, title: string) {
+  setWindows((w) => w.hwnd === hwnd, "title", title);
+}
+
+export function setWindowIcon(hwnd: symbol, icon: string) {
+  setWindows((w) => w.hwnd === hwnd, "icon", icon);
+}
 
 export function getSymbolByHWnd(hwnd: string) {
   let s = [...windowsmap];

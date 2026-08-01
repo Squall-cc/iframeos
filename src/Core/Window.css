@@ -49,3 +49,11 @@
 #window.maximized .resize-handle {
   display: none;
 }
+
+#window.minimized {
+  display: none;
+}
+
+#window.modal-window {
+  box-shadow: none;
+}

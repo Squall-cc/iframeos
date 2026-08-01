@@ -1,9 +1,15 @@
 import "@fortawesome/fontawesome-free/css/fontawesome.min.css";
 import "@fortawesome/fontawesome-free/css/solid.min.css";
 
+import {
+  VFS_DRAG_MIME,
+  copyVfsFileToDesktop,
+  moveToDesktop,
+} from "../Apis/DesktopApi";
 import { FileSystemAccess } from "../Apis/FileSystemApi";
+import { pickHostFiles } from "../Apis/hostFiles";
 import { shellAsk, shellModal, shellOpenWith, shellOpenWithPicker, shellSelectDir } from "../Apis/iSApi";
-import { setContent, setMinSize } from "../Core/windowhelpers";
+import { setContent, setMinSize, spawn } from "../Core/windowhelpers";
 
 let currentPath = "/";
 let selected: string | null = null;
@@ -20,7 +26,17 @@ function normalizePath(path: string): string {
 }
 
 export default function run(hwnd: symbol) {
+  startExplorer(hwnd);
+}
+
+// opens the file explorer in its own window, starting at the given path.
+export function openFolder(path: string) {
+  spawn("File Explorer", (hwnd) => startExplorer(hwnd, path));
+}
+
+function startExplorer(hwnd: symbol, initialPath = "/") {
   setMinSize(hwnd, 550, 400);
+  currentPath = initialPath;
 
   const container = document.createElement("div");
   container.style.cssText = "display:flex;flex-direction:column;height:100%;font-family:Segoe UI,sans-serif;font-size:12px;";
@@ -83,6 +99,24 @@ export default function run(hwnd: symbol) {
     });
   });
   toolbar.appendChild(newFolderBtn);
+
+  const uploadBtn = document.createElement("button");
+  uploadBtn.textContent = "Upload";
+  uploadBtn.style.cssText = "padding:3px 8px;font-size:11px;cursor:pointer;border:1px solid rgba(0,0,0,0.2);border-radius:2px;background:rgba(255,255,255,0.5);";
+  uploadBtn.addEventListener("click", async () => {
+    const files = await pickHostFiles({ multiple: true });
+    if (!files || files.length === 0) return;
+    const fs = new FileSystemAccess();
+    for (const file of files) {
+      const dest = normalizePath(`${currentPath}/${file.name}`);
+      if (!fs.isFile(dest)) fs.createFile(dest);
+      await fs.data.write(dest, file);
+      fs.updateFileMeta(dest, file);
+    }
+    statusBar.textContent = `Uploaded ${files.length} file${files.length !== 1 ? "s" : ""} to ${currentPath}`;
+    navigateTo(currentPath);
+  });
+  toolbar.appendChild(uploadBtn);
 
   const deleteBtn = document.createElement("button");
   deleteBtn.textContent = "Delete";
@@ -281,6 +315,25 @@ export default function run(hwnd: symbol) {
         navigateTo(currentPath);
       });
     });
+    addItem("Move to Desktop", async () => {
+      const dest = await moveToDesktop(target);
+      if (!dest) {
+        shellModal("error", hwnd, "Cannot Move", `"${name}" is already on the desktop.`);
+        return;
+      }
+      selected = null;
+      navigateTo(currentPath);
+    });
+    if (!isDir) {
+      addItem("Copy to Desktop", async () => {
+        const dest = await copyVfsFileToDesktop(target);
+        if (!dest) {
+          shellModal("error", hwnd, "Cannot Copy", `"${name}" is already on the desktop.`);
+          return;
+        }
+        navigateTo(currentPath);
+      });
+    }
     addSeparator();
     addItem("Delete", () => {
       shellModal(
@@ -396,6 +449,13 @@ export default function run(hwnd: symbol) {
         showContextMenu(e.clientX, e.clientY, entry);
       });
 
+      row.draggable = true;
+      row.addEventListener("dragstart", (e) => {
+        e.dataTransfer?.setData(VFS_DRAG_MIME, entry);
+        e.dataTransfer?.setData("text/plain", entry);
+        e.dataTransfer!.effectAllowed = "copyMove";
+      });
+
       row.addEventListener("dblclick", async () => {
         if (isDir) {
           navigateTo(entry);
@@ -412,5 +472,5 @@ export default function run(hwnd: symbol) {
     }
   }
 
-  navigateTo("/");
+  navigateTo(currentPath);
 }

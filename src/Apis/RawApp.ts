@@ -19,8 +19,9 @@
 // files, and when a file is opened the handler is loaded with the file path
 // passed as ?file=/path/to/file. the app reads it with isapi.getFileArg().
 
-import { spawn, setContent, windowsmap } from "../Core/windowhelpers";
+import { spawn, setContent, windowsmap, setWindowIcon } from "../Core/windowhelpers";
 
+import { getAppIconUrl } from "./appIcon";
 import { FileSystemAccess } from "./FileSystemApi";
 import { RegistryInstanceAccess } from "./RegistryApi";
 import { attachsjFrame } from "./scramjet";
@@ -51,6 +52,11 @@ export interface RawManifest {
   // passed to it as ?file=/path/to/file
   handlerModule?: string;
   fileassoc?: string[];
+  // path to an icon file relative to the app root (optional; defaults to the
+  // system fallback icon)
+  icon?: string;
+  // whether the app should show up in the start menu (default: true)
+  startMenu?: boolean;
 }
 
 export interface RegisteredRawManifest {
@@ -63,6 +69,8 @@ export interface RegisteredRawManifest {
   handlerModule?: string;
   fileassoc: string[];
   hasFileOpener: boolean;
+  icon?: string;
+  startMenu?: boolean;
 }
 
 function normalizePath(path: string): string {
@@ -159,6 +167,8 @@ export async function installRawApp(
     handlerModule,
     fileassoc: declaredAssoc,
     hasFileOpener: !!handlerModule,
+    icon: manifest.icon,
+    startMenu: manifest.startMenu,
   };
 
   const reg = new RegistryInstanceAccess();
@@ -279,8 +289,10 @@ export async function launchRawEntry(
   const title = filename
     ? filename.split("/").pop() || manifest.name
     : manifest.name;
+  const iconUrl = await getAppIconUrl(appKey, manifest.icon);
 
   spawn(title, (hwnd) => {
+    setWindowIcon(hwnd, iconUrl);
     const iframe = document.createElement("iframe");
     iframe.style.width = "100%";
     iframe.style.height = "100%";
