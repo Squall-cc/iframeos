@@ -28,19 +28,21 @@ var THEMES = {
             '--tab-active-bg': '#434c5e', '--text-on-active': '#eceff4'
         }
     },
-//    'rose-pine': {
-//        name: 'Rose Pine',
-//        swatches: ['#faf4ed', '#907aa9', '#56949f', '#b4637a', '#464261'],
-//        vantaColor: 0xebbcba, vantaBg: 0xfaf4ed,
-//        vars: {
-//            '--bg': '#faf4ed', '--bg-deep': '#f2e9e1', '--bg-deeper': '#ebe4dd',
-//            '--border': '#cecacd', '--text': '#464261', '--text-dim': '#797593',
-//            '--text-muted': '#9893a5', '--accent': '#ea9a97', '--green': '#56949f', '--red': '#b4637a',
-//            '--surface': 'rgba(242,233,225,0.3)', '--border-glass': 'rgba(144,122,169,0.35)',
-//            '--accent-hover': '#ebbcba', '--error': '#b4637a',
-//            '--tab-active-bg': '#e8ddd5', '--text-on-active': '#464261'
-//        }
-//    },
+
+    // this looks BUNS, mayb disable or fix to be a diff variant of rose pine
+    'rose-pine': {
+          name: 'Rose Pine',
+          swatches: ['#faf4ed', '#907aa9', '#56949f', '#b4637a', '#464261'],
+          vantaColor: 0xebbcba, vantaBg: 0xfaf4ed,
+          vars: {
+              '--bg': '#faf4ed', '--bg-deep': '#f2e9e1', '--bg-deeper': '#ebe4dd',
+              '--border': '#cecacd', '--text': '#464261', '--text-dim': '#797593',
+              '--text-muted': '#9893a5', '--accent': '#ea9a97', '--green': '#56949f', '--red': '#b4637a',
+              '--surface': 'rgba(242,233,225,0.3)', '--border-glass': 'rgba(144,122,169,0.35)',
+              '--accent-hover': '#ebbcba', '--error': '#b4637a',
+              '--tab-active-bg': '#e8ddd5', '--text-on-active': '#464261'
+          }
+      },
     'catppuccin-frappe': {
         name: 'C. Frappe',
         swatches: ['#303446', '#ca9ee6', '#a6d189', '#e78284', '#c6d0f5'],
