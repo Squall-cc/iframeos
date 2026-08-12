@@ -799,7 +799,7 @@ async function openShellPicker(
       if (currentPath !== "/") {
         const upRow = document.createElement("div");
         upRow.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:11px;";
-        upRow.innerHTML = '<span style="font-size:14px;">📁</span><span>..</span>';
+        upRow.innerHTML = '<i class="fa-solid fa-folder" style="font-size:13px;color:#e8b339;"></i><span>..</span>'; //dave stop getting jetbrains ai to make css for you, we use fontawesome here, not emojis
         upRow.addEventListener("click", () => renderDir(currentPath.split("/").slice(0, -1).join("/") || "/"));
         upRow.addEventListener("mouseenter", () => { upRow.style.background = "rgba(0,0,0,0.06)"; });
         upRow.addEventListener("mouseleave", () => { upRow.style.background = ""; });
@@ -812,9 +812,9 @@ async function openShellPicker(
         const row = document.createElement("div");
         row.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:11px;";
 
-        const icon = document.createElement("span");
-        icon.style.cssText = "font-size:14px;flex-shrink:0;";
-        icon.textContent = isDir ? "📁" : "📄";
+        const icon = document.createElement("i");
+        icon.style.cssText = `font-size:13px;flex-shrink:0;color:${isDir ? "#e8b339" : "#7a7a7a"};`;
+        icon.className = isDir ? "fa-solid fa-folder" : "fa-solid fa-file";
         row.appendChild(icon);
 
         const label = document.createElement("span");

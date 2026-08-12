@@ -1,27 +1,39 @@
 #taskbar {
-  position: absolute;
+  position: fixed;
+  box-sizing: border-box;
   z-index: 9999;
   display: flex;
   flex-direction: row;
-  height: var(--panel-size);
-  width: 100%;
-  left: 0;
-  bottom: 0;
-  border-top: 1px solid rgba(200, 200, 200, 0.9);
-  background: linear-gradient(
-    180deg,
-    rgba(10, 10, 10, 0.8) 0%,
-    rgba(70, 70, 70, 0.4) 100%
-  );
-  backdrop-filter: blur(4px);
+  align-items: stretch;
+  height: var(--taskbar-height);
+  left: var(--taskbar-inset);
+  right: var(--taskbar-inset);
+  bottom: var(--taskbar-bottom);
+  border: var(--taskbar-border) solid var(--accent, #2196f3);
+  border-radius: 999px;
+  background: var(--bg-deeper, #1c1c1e);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  transition: background 0.15s ease, backdrop-filter 0.15s ease;
+}
+
+html.taskbar-blur #taskbar {
+  background: var(--surface, rgba(20, 20, 20, 0.55));
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
 }
 
 #taskbar .windows-list {
   flex-grow: 1;
   display: flex;
   gap: 2px;
-  padding: 2px 4px;
+  padding: 2px 6px 2px
+    calc(
+      var(--orb-left) + var(--orb-size) + var(--orb-gap) -
+        var(--taskbar-inset) - var(--taskbar-border)
+    );
   align-items: stretch;
+  min-width: 0;
 }
 
 .taskbar-window {
@@ -31,9 +43,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 8px;
   color: #fff;
   font-family: "Segoe UI", sans-serif;
   font-size: 11px;
@@ -62,12 +74,11 @@
 }
 
 .taskbar-window:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .taskbar-window.active {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: var(--accent, #2196f3);
 }
 
 .taskbar-window.minimized {
@@ -80,12 +91,7 @@
   flex-direction: row;
   min-width: 200px;
   justify-content: flex-end;
-  background: linear-gradient(
-    270deg,
-    rgba(10, 10, 10, 0.3) 0%,
-    rgba(10, 10, 10, 0.3) 70%,
-    transparent 100%
-  );
+  background: rgba(0, 0, 0, 0.18);
 }
 
 #taskbar .tray > * {

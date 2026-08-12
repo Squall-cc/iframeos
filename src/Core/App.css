@@ -19,16 +19,32 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Readex Pro";
+  src: url(../Assets/fonts/readexpro-variable.woff2) format("woff2-variations");
+  font-weight: 160 700;
+  font-style: normal;
+  font-optical-sizing: auto;
+}
+
 :root {
   --window-bg: #f1f1f1;
   --window-border: #d3d3d3;
   --header-bg: #2196f3;
   --header-fg: #ffffff;
   --resize-handle-bg: #d3d3d3;
-  /* todo: use 7.css to fix styling*/
   --taskbar-bg: #000000;
   --button-bg: #7fffd4;
   --panel-size: 40px;
+  --taskbar-inset: 12px;
+  --taskbar-bottom: 6px;
+  --taskbar-border: 3px;
+  --taskbar-height: calc(var(--panel-size) - 10px);
+  --orb-size: 26px;
+  --orb-gap: 6px;
+  --orb-left: calc(
+    var(--taskbar-inset) + var(--taskbar-border) + var(--orb-gap)
+  );
 }
 
 body {
@@ -41,6 +57,23 @@ body {
   inset: 0;
   z-index: -1;
   background: url(../Assets/inclbkgrn/manridingwoman.png) center / 100% 100% no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#wallpaper::after {
+  content: "ASPEN";
+  font-family: "Readex Pro", "Segoe UI", sans-serif;
+  font-weight: 700;
+  font-size: clamp(64px, 15vw, 240px);
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.16);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
 }
 
 #overlay {

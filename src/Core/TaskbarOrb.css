@@ -1,22 +1,31 @@
 #taskbar-orb {
-  margin: 0 9px;
-  width: var(--panel-size);
-  min-width: var(--panel-size);
-  height: var(--panel-size);
+  position: fixed;
+  z-index: 10000;
+  left: var(--orb-left);
+  bottom: calc(
+    var(--taskbar-bottom) + (var(--taskbar-height) - var(--orb-size)) / 2
+  );
+  width: var(--orb-size);
+  min-width: var(--orb-size);
+  height: var(--orb-size);
+  border-radius: 8px;
+  background-color: transparent;
   background-image: url(../Assets/iconsUI/startButton.png);
   background-position: center;
-  background-size: calc(var(--panel-size) - 1px);
+  background-size: 20px;
   background-repeat: no-repeat;
   filter: brightness(1);
-  transition: filter 0.1s;
+  transition: filter 0.12s ease, background-color 0.12s ease;
   cursor: pointer;
 }
 
 #taskbar-orb:hover,
 #taskbar-orb:focus {
   filter: brightness(1.2);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 #taskbar-orb:active {
   filter: brightness(1);
+  background-color: rgba(255, 255, 255, 0.18);
 }

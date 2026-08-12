@@ -297,23 +297,17 @@ function startApp(hwnd: symbol, initialFile?: string) {
         verifyTitle.style.color = verifiedOk ? "#107c10" : "#d83b01";
         verifyBox.appendChild(verifyTitle);
 
-        for (const check of verified.checks) {
+        function verifyRow(message: string, iconClass: string, color: string): HTMLDivElement {
           const row = document.createElement("div");
           row.style.cssText = "color:rgba(0,0,0,0.7);";
           row.textContent = `  ✓ ${check}`;
           verifyBox.appendChild(row);
         }
         for (const warn of verified.warnings) {
-          const row = document.createElement("div");
-          row.style.cssText = "color:#8a6d00;";
-          row.textContent = `  ⚠ ${warn}`;
-          verifyBox.appendChild(row);
+          verifyBox.appendChild(verifyRow(warn, "fa-solid fa-triangle-exclamation", "#8a6d00"));
         }
         for (const err of verified.errors) {
-          const row = document.createElement("div");
-          row.style.cssText = "color:#d83b01;";
-          row.textContent = `  ✖ ${err}`;
-          verifyBox.appendChild(row);
+          verifyBox.appendChild(verifyRow(err, "fa-solid fa-xmark", "#d83b01"));
         }
         content.appendChild(verifyBox);
 

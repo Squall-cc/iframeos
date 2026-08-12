@@ -1,5 +1,6 @@
 import { shellModal, shellSelectFile } from "../Apis/iSApi";
 import { resetSystem } from "../Apis/system-defaults";
+import { applyTheme, getTaskbarBlur, getThemeList, setTaskbarBlur } from "../Apis/theme";
 import { FileSystemAccess } from "../Apis/FileSystemApi";
 import {
   getAllWallpapers,
@@ -99,8 +100,16 @@ export default function run(hwnd: symbol) {
     }
 
     const preview = document.createElement("div");
-    preview.style.cssText = "width:100%;height:52px;background-size:cover;background-position:center;border-radius:2px;background-color:rgba(0,0,0,0.05);";
-    if (w.url) preview.style.backgroundImage = `url("${w.url}")`;
+    preview.style.cssText = "width:100%;height:52px;background-size:cover;background-position:center;border-radius:2px;background-color:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;";
+    if (w.vanta) {
+      preview.style.background = "linear-gradient(135deg, #008542, #89ab0e)";
+      const icon = document.createElement("i");
+      icon.className = "fa-solid fa-wave-square";
+      icon.style.cssText = "color:rgba(255,255,255,0.85);font-size:18px;";
+      preview.appendChild(icon);
+    } else if (w.url) {
+      preview.style.backgroundImage = `url("${w.url}")`;
+    }
     tile.appendChild(preview);
 
     const label = document.createElement("span");
@@ -114,6 +123,69 @@ export default function run(hwnd: symbol) {
     });
     return tile;
   }
+
+  // ---- theme selector ----
+  const themeSection = document.createElement("div");
+  themeSection.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid rgba(0,100,200,0.2);border-radius:4px;background:rgba(0,100,200,0.03);";
+
+  const themeHeader = document.createElement("div");
+  themeHeader.style.cssText = "font-weight:600;font-size:12px;color:#0078d4;";
+  themeHeader.textContent = "Theme";
+  themeSection.appendChild(themeHeader);
+
+  const themeDesc = document.createElement("div");
+  themeDesc.style.cssText = "font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:4px;";
+  themeDesc.textContent = "Pick an accent color scheme. Also recolors the Vanta wallpaper when it's active.";
+  themeSection.appendChild(themeDesc);
+
+  const themeGrid = document.createElement("div");
+  themeGrid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;";
+  themeSection.appendChild(themeGrid);
+
+  const savedTheme = localStorage.getItem("theme") || "windows7";
+  for (const t of getThemeList()) {
+    const card = document.createElement("button");
+    card.className = "theme-card";
+    card.dataset.theme = t.id;
+    card.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;cursor:pointer;border:1px solid rgba(0,0,0,0.15);border-radius:4px;background:rgba(255,255,255,0.5);";
+    if (t.id === savedTheme) card.style.border = "2px solid #0078d4";
+
+    const swatches = document.createElement("div");
+    swatches.style.cssText = "display:flex;width:100%;height:28px;border-radius:2px;overflow:hidden;";
+    for (const color of t.swatches) {
+      const chip = document.createElement("div");
+      chip.style.cssText = `flex:1;background:${color};`;
+      swatches.appendChild(chip);
+    }
+    card.appendChild(swatches);
+
+    const label = document.createElement("span");
+    label.style.cssText = "font-size:10px;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+    label.textContent = t.name;
+    card.appendChild(label);
+
+    card.addEventListener("click", () => {
+      applyTheme(t.id);
+      for (const c of Array.from(themeGrid.children) as HTMLElement[]) {
+        c.style.border = c.dataset.theme === t.id ? "2px solid #0078d4" : "1px solid rgba(0,0,0,0.15)";
+      }
+    });
+    themeGrid.appendChild(card);
+  }
+
+  const blurRow = document.createElement("label");
+  blurRow.style.cssText = "display:flex;align-items:center;gap:6px;font-size:11px;margin-top:2px;cursor:pointer;";
+  const blurCheckbox = document.createElement("input");
+  blurCheckbox.type = "checkbox";
+  blurCheckbox.checked = getTaskbarBlur();
+  blurCheckbox.addEventListener("change", () => {
+    setTaskbarBlur(blurCheckbox.checked);
+  });
+  blurRow.appendChild(blurCheckbox);
+  blurRow.appendChild(document.createTextNode("Blur taskbar background"));
+  themeSection.appendChild(blurRow);
+
+  body.appendChild(themeSection);
 
   // ---- apps section ----
   const appsSection = document.createElement("div");

@@ -39,8 +39,8 @@ const Taskbar: Component = () => {
       <Show when={launcherOpen()}>
         <Launcher onClose={() => setLauncherOpen(false)} />
       </Show>
+      <TaskbarOrb onClick={() => setLauncherOpen(!launcherOpen())} />
       <div id="taskbar">
-        <TaskbarOrb onClick={() => setLauncherOpen(!launcherOpen())} />
         <div class="windows-list">
           <For each={windows}>
             {(w) => {

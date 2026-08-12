@@ -240,9 +240,9 @@ export default function run(hwnd: symbol) {
       }
       row.appendChild(toggle);
 
-      const icon = document.createElement("span");
-      icon.style.cssText = "margin-right:3px;font-size:11px;flex-shrink:0;";
-      icon.textContent = "📁";
+      const icon = document.createElement("i");
+      icon.style.cssText = "margin-right:3px;font-size:11px;flex-shrink:0;color:#e8b339;";
+      icon.className = "fa-solid fa-folder";
       row.appendChild(icon);
 
       const label = document.createElement("span");

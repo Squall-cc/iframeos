@@ -1,3 +1,4 @@
+import { startVantaBackground, stopVantaBackground } from "../Apis/theme";
 import { FileSystemAccess } from "../Apis/FileSystemApi";
 import { RegistryInstanceAccess } from "../Apis/RegistryApi";
 import { THEME_PATH, THEME_BKG_VALUE, WALLPAPERS_DIR } from "../Apis/system-defaults";
@@ -11,12 +12,18 @@ export interface WallpaperInfo {
   id: string;
   name: string;
   url?: string;
+  vanta?: boolean;
 }
+
+export const VANTA_WALLPAPER_ID = "vanta";
+
+const VANTA_WALLPAPER: WallpaperInfo = { id: VANTA_WALLPAPER_ID, name: "Vanta (Animated)", vanta: true };
 
 export const DEFAULT_WALLPAPERS: WallpaperInfo[] = [
   { id: "default0", name: "Man Riding Woman", url: manridingwoman },
   { id: "default1", name: "win7", url: win7 },
   { id: "default2", name: "Chicken", url: chicken },
+  VANTA_WALLPAPER,
 ];
 
 export function getDefaultWallpaper(id: string): WallpaperInfo | undefined {
@@ -30,6 +37,16 @@ export async function getCurrentWallpaperId(): Promise<string> {
 }
 
 export async function applyWallpaperById(id: string): Promise<void> {
+  stopVantaBackground();
+  if (id === VANTA_WALLPAPER_ID) {
+    const el = document.getElementById("wallpaper");
+    if (el) {
+      el.style.backgroundImage = "";
+      startVantaBackground(el);
+    }
+    return;
+  }
+
   const def = getDefaultWallpaper(id);
   if (def?.url) {
     setWallpaper(def.url);

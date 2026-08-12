@@ -127,7 +127,7 @@ function topology(t, e = {}) {
         }
     }
 }
-const VANTA = {
+export const VANTA = {
     TOPOLOGY(t = {}) {
         var e;
         let o = "string" == typeof t.el ? document.querySelector(t.el) : t.el,

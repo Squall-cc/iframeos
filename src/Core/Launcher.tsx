@@ -117,6 +117,7 @@ const Launcher: Component<LauncherProps> = (props) => {
     document.addEventListener("mousedown", handler);
     document.addEventListener("keydown", keyHandler);
     searchRef?.focus();
+
     onCleanup(() => {
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("keydown", keyHandler);

@@ -1,89 +1,11 @@
 // modified version of old v2 theming + vanta engine
 import { VANTA } from "../vanta.js";
 
-var THEMES = {
-    windows7: {
-        name: 'Windows 7',
-        swatches: ['#f1f1f1', '#2196f3', '#7fffd4', '#c00', '#000000'],
-        vantaColor: 0x2196f3, vantaBg: 0x000000,
-        vars: {
-            '--bg': '#f1f1f1', '--bg-deep': '#d3d3d3', '--bg-deeper': '#000000',
-            '--border': '#d3d3d3', '--text': '#000000', '--text-dim': '#333333',
-            '--text-muted': '#666666', '--accent': '#2196f3', '--green': '#7fffd4', '--red': '#c00',
-            '--surface': 'rgba(255,255,255,0.3)', '--border-glass': 'rgba(33,150,243,0.35)',
-            '--accent-hover': '#42a5f5', '--error': '#c00',
-            '--tab-active-bg': '#e0e0e0', '--text-on-active': '#000000'
-        }
-    },
-    nord: {
-        name: 'Nord',
-        swatches: ['#3b4252', '#5e81ac', '#a3be8c', '#bf616a', '#eceff4'],
-        vantaColor: 0x5e81ac, vantaBg: 0x3b4252,
-        vars: {
-            '--bg': '#3b4252', '--bg-deep': '#2e3440', '--bg-deeper': '#242933',
-            '--border': '#5e81ac', '--text': '#eceff4', '--text-dim': '#e5e9f0',
-            '--text-muted': '#d8dee9', '--accent': '#5e81ac', '--green': '#a3be8c', '--red': '#bf616a',
-            '--surface': 'rgba(46,52,64,0.3)', '--border-glass': 'rgba(94,129,172,0.35)',
-            '--accent-hover': '#81a1c1', '--error': '#bf616a',
-            '--tab-active-bg': '#434c5e', '--text-on-active': '#eceff4'
-        }
-    },
+var DEFAULT_THEME = 'ef-dark-medium';
 
-    // this looks BUNS, mayb disable or fix to be a diff variant of rose pine
-    'rose-pine': {
-          name: 'Rose Pine',
-          swatches: ['#faf4ed', '#907aa9', '#56949f', '#b4637a', '#464261'],
-          vantaColor: 0xebbcba, vantaBg: 0xfaf4ed,
-          vars: {
-              '--bg': '#faf4ed', '--bg-deep': '#f2e9e1', '--bg-deeper': '#ebe4dd',
-              '--border': '#cecacd', '--text': '#464261', '--text-dim': '#797593',
-              '--text-muted': '#9893a5', '--accent': '#ea9a97', '--green': '#56949f', '--red': '#b4637a',
-              '--surface': 'rgba(242,233,225,0.3)', '--border-glass': 'rgba(144,122,169,0.35)',
-              '--accent-hover': '#ebbcba', '--error': '#b4637a',
-              '--tab-active-bg': '#e8ddd5', '--text-on-active': '#464261'
-          }
-      },
-    'catppuccin-frappe': {
-        name: 'C. Frappe',
-        swatches: ['#303446', '#ca9ee6', '#a6d189', '#e78284', '#c6d0f5'],
-        vantaColor: 0xca9ee6, vantaBg: 0x303446,
-        vars: {
-            '--bg': '#303446', '--bg-deep': '#292c3c', '--bg-deeper': '#232634',
-            '--border': '#51576d', '--text': '#c6d0f5', '--text-dim': '#b5bfe2',
-            '--text-muted': '#a5adce', '--accent': '#ca9ee6', '--green': '#a6d189', '--red': '#e78284',
-            '--surface': 'rgba(41,44,60,0.3)', '--border-glass': 'rgba(202,158,230,0.35)',
-            '--accent-hover': '#d6b5ee', '--error': '#e78284',
-            '--tab-active-bg': '#414559', '--text-on-active': '#c6d0f5'
-        }
-    },
-    'catppuccin-macchiato': {
-        name: 'C. Macchiato',
-        swatches: ['#24273a', '#c6a0f6', '#a6da95', '#ed8796', '#cad3f5'],
-        vantaColor: 0xc6a0f6, vantaBg: 0x24273a,
-        vars: {
-            '--bg': '#24273a', '--bg-deep': '#1e2030', '--bg-deeper': '#181926',
-            '--border': '#494d64', '--text': '#cad3f5', '--text-dim': '#b8c0e0',
-            '--text-muted': '#a5adcb', '--accent': '#c6a0f6', '--green': '#a6da95', '--red': '#ed8796',
-            '--surface': 'rgba(30,32,48,0.3)', '--border-glass': 'rgba(198,160,246,0.35)',
-            '--accent-hover': '#d3b8f8', '--error': '#ed8796',
-            '--tab-active-bg': '#363a4f', '--text-on-active': '#cad3f5'
-        }
-    },
-    'catppuccin-mocha': {
-        name: 'C .Mocha',
-        swatches: ['#1e1e2e', '#cba6f7', '#a6e3a1', '#f38ba8', '#cdd6f4'],
-        vantaColor: 0xcba6f7, vantaBg: 0x1e1e2e,
-        vars: {
-            '--bg': '#1e1e2e', '--bg-deep': '#181825', '--bg-deeper': '#11111b',
-            '--border': '#45475a', '--text': '#cdd6f4', '--text-dim': '#bac2de',
-            '--text-muted': '#a6adc8', '--accent': '#cba6f7', '--green': '#a6e3a1', '--red': '#f38ba8',
-            '--surface': 'rgba(24,24,37,0.3)', '--border-glass': 'rgba(203,166,247,0.35)',
-            '--accent-hover': '#d8befc', '--error': '#f38ba8',
-            '--tab-active-bg': '#313244', '--text-on-active': '#cdd6f4'
-        }
-    },
+var THEMES = {
     'ef-dark-soft': {
-        name: 'EF Dark Soft',
+        name: 'Dark Soft',
         swatches: ['#333c43', '#A7C080', '#83C092', '#E67E80', '#D3C6AA'],
         vantaColor: 0xA7C080, vantaBg: 0x333c43,
         vars: {
@@ -96,7 +18,7 @@ var THEMES = {
         }
     },
     'ef-dark-medium': {
-        name: 'EF Dark Med',
+        name: 'Dark Med',
         swatches: ['#2d353b', '#A7C080', '#83C092', '#E67E80', '#D3C6AA'],
         vantaColor: 0xA7C080, vantaBg: 0x2d353b,
         vars: {
@@ -109,7 +31,7 @@ var THEMES = {
         }
     },
     'ef-dark-hard': {
-        name: 'EF Dark Hard',
+        name: 'Dark Hard',
         swatches: ['#272e33', '#A7C080', '#83C092', '#E67E80', '#D3C6AA'],
         vantaColor: 0xA7C080, vantaBg: 0x272e33,
         vars: {
@@ -122,7 +44,7 @@ var THEMES = {
         }
     },
     'ef-light-soft': {
-        name: 'EF Light Soft',
+        name: 'Light Soft',
         swatches: ['#f3ead3', '#8DA101', '#35A77C', '#F85552', '#5C6A72'],
         vantaColor: 0x8DA101, vantaBg: 0xf3ead3,
         vars: {
@@ -135,7 +57,7 @@ var THEMES = {
         }
     },
     'ef-light-medium': {
-        name: 'EF Light Med',
+        name: 'Light Med',
         swatches: ['#fdf6e3', '#8DA101', '#35A77C', '#F85552', '#5C6A72'],
         vantaColor: 0x8DA101, vantaBg: 0xfdf6e3,
         vars: {
@@ -148,7 +70,7 @@ var THEMES = {
         }
     },
     'ef-light-hard': {
-        name: 'EF Light Hard',
+        name: 'Light Hard',
         swatches: ['#FFFBEF', '#8DA101', '#35A77C', '#F85552', '#5C6A72'],
         vantaColor: 0x8DA101, vantaBg: 0xFFFBEF,
         vars: {
@@ -162,6 +84,32 @@ var THEMES = {
     }
 };
 
+//vanta element
+var vantaEl = null;
+
+var TASKBAR_BLUR_KEY = 'taskbarBlur';
+
+export function getTaskbarBlur() {
+    return localStorage.getItem(TASKBAR_BLUR_KEY) === '1';
+}
+
+export function setTaskbarBlur(enabled) {
+    localStorage.setItem(TASKBAR_BLUR_KEY, enabled ? '1' : '0');
+    applyTaskbarBlur();
+}
+
+export function applyTaskbarBlur() {
+    document.documentElement.classList.toggle('taskbar-blur', getTaskbarBlur());
+}
+
+export function getThemeList() {
+    return Object.keys(THEMES).map((id) => ({
+        id,
+        name: THEMES[id].name,
+        swatches: THEMES[id].swatches,
+    }));
+}
+
 export function applyTheme(id, reload) {
     var theme = THEMES[id];
     if (!theme) return;
@@ -173,14 +121,12 @@ export function applyTheme(id, reload) {
     localStorage.setItem('theme', id);
     if (window._vantaEffect && window._vantaEffect.setOptions) {
         window._vantaEffect.setOptions({ color: theme.vantaColor, backgroundColor: theme.vantaBg });
-    } else if (window._vantaEffect) {
+    } else if (window._vantaEffect && vantaEl) {
         // vanta-modified doesn't have setOptions, destroy and recreate
         try {
             window._vantaEffect.destroy();
             window._vantaEffect = VANTA.TOPOLOGY({
-                el: "#vanta-bg",
-                mouseControls: true, touchControls: true, gyroControls: false,
-                minHeight: 200, minWidth: 200, scale: 1, scaleMobile: 1,
+                el: vantaEl,
                 color: theme.vantaColor, backgroundColor: theme.vantaBg,
             });
         } catch(e) {}
@@ -199,15 +145,26 @@ export function applyTheme(id, reload) {
 }
 
 export function getVantaColors() {
-    var t = THEMES[localStorage.getItem('theme')] || THEMES['windows7'];
+    var t = THEMES[localStorage.getItem('theme')] || THEMES[DEFAULT_THEME];
     return { color: t.vantaColor, backgroundColor: t.vantaBg };
 }
 
 export function startVantaBackground(el) {
-    return VANTA.TOPOLOGY({ el, ...getVantaColors() });
+    vantaEl = typeof el === "string" ? document.querySelector(el) : el;
+    window._vantaEffect = VANTA.TOPOLOGY({ el: vantaEl, ...getVantaColors() });
+    return window._vantaEffect;
+}
+
+export function stopVantaBackground() {
+    if (window._vantaEffect) {
+        try { window._vantaEffect.destroy(); } catch (e) {}
+        window._vantaEffect = null;
+    }
+    vantaEl = null;
 }
 
 (function() {
     var saved = localStorage.getItem('theme');
-    applyTheme(saved && THEMES[saved] ? saved : 'windows7');
+    applyTheme(saved && THEMES[saved] ? saved : DEFAULT_THEME);
+    applyTaskbarBlur();
 })();

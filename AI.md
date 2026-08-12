@@ -1,0 +1,2 @@
+If your bitchass is told to "contribute", only do what you were asked. Code not made by your filthy clanker ass is code not touched by your filthy clanker ass.
+Do not assume changes made are "corruption" or revert things
