@@ -54,9 +54,6 @@ export function closeWindow(hwnd: symbol) {
   }
 }
 
-// registers a callback that fires when a window is closed, before the caller
-// of closeWindow gets control back. used by modal dialogs so the promise they
-// resolve isn't left hanging when the user dismisses the window with the X.
 export function onWindowClose(hwnd: symbol, fn: () => void) {
   closeHandlers.set(hwnd, fn);
 }
@@ -147,8 +144,6 @@ export function getCorners(hwnd: symbol) {
   };
 }
 
-// a modal window, once open, swallows focus for every other window. the
-// summoner can't be interacted with until the modal is cleared.
 export function anyModalOpen(): boolean {
   return windows.some((w) => w.modal);
 }
@@ -209,8 +204,6 @@ export function spawn(title: string = "window", run?: (hwnd: symbol) => void) {
   return s;
 }
 
-// opens a modal dialog window parented to `parent` (if given). the rest of the
-// shell is blocked from interaction until it is closed.
 export function spawnModal(
   title: string,
   parent?: symbol,

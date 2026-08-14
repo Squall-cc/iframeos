@@ -1,14 +1,3 @@
-// .spa runtime: installs zipped apps and loads them from the virtual
-// filesystem, injecting the isapi (__API) into each module at runtime.
-//
-// a .spa archive is just a renamed zip containing:
-//   manifest.json  - name/key/version/entryPoint/fileOpener/etc.
-//   *.ts / *.js    - the app's code files (TypeScript is transpiled on load)
-//
-// on install the manifest goes into the registry and every file is copied
-// into the VFS under /iSi/apps/{key}/. at launch the entry module is read
-// from the VFS, transpiled, and evaluated inside a CommonJS wrapper whose
-// factory receives the injected API bindings.
 
 import { spawn, setWindowIcon } from "../Core/windowhelpers";
 
@@ -258,8 +247,6 @@ export interface SpaArchiveInfo {
   entries: ZipEntry[];
 }
 
-// parses a .spa archive so the installer can preview the manifest and let the
-// user pick which file associations to create before installing.
 export async function parseSpaArchive(bytes: ArrayBuffer): Promise<SpaArchiveInfo> {
   const entries = await unzip(bytes);
   const manifest = await extractManifest(entries);
@@ -278,8 +265,6 @@ export async function parseSpaArchive(bytes: ArrayBuffer): Promise<SpaArchiveInf
 }
 
 export interface InstallSpaOptions {
-  // extensions to associate in ClassesRoot; defaults to the manifest's
-  // "fileassoc" list. only used when the app declares a fileOpener.
   fileAssociations?: string[];
 }
 
@@ -362,7 +347,6 @@ export async function installSpaFromZip(
   const indexRecord = await reg._load(APP_INDEX_PATH);
   const list = (indexRecord?.values["list"] as Array<{ key: string }>) ?? [];
   if (!list.some((a) => a.key === key)) {
-    //@ts-ignore
     list.push({ key, name, version, description });
     await reg._write(APP_INDEX_PATH, "list", list);
   }

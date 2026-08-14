@@ -57,14 +57,20 @@ body {
   inset: 0;
   z-index: -1;
   background: url(../Assets/inclbkgrn/manridingwoman.png) center / 100% 100% no-repeat;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
+/* positioned (not static) so it establishes its own stacking position above
+   the vanta canvas, which vanta.js mounts as a position:absolute child with
+   z-index:0 - a non-positioned ::after would otherwise paint underneath it. */
 #wallpaper::after {
   content: "ASPEN";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: "Readex Pro", "Segoe UI", sans-serif;
   font-weight: 700;
   font-size: clamp(64px, 15vw, 240px);

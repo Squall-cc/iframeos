@@ -1,14 +1,3 @@
-// isapi.js — the iSApi bridge for raw (HTML) apps.
-//
-// Raw apps are plain HTML pages loaded through a scramjet iframe backed by the
-// virtual filesystem transport (the same mechanism the app store uses, except
-// served from the VFS instead of the internet). This script gives them the
-// same platform API surface the TypeScript apps get: filesystem, registry,
-// shell dialogs, launching apps and control of their own window.
-//
-// It is loaded inside the app's iframe with <script src="/iSi/js/isapi.js">.
-// Every call is forwarded to the host page with an aspen "eval" request, which
-// evaluates the code where window.__API lives (see fstransport.handleEval).
 
 (function () {
   "use strict";
@@ -229,9 +218,6 @@
       return currentQuery().get("hwnd");
     },
 
-    // a WindowHandle-like proxy for this app's own window (null if it wasn't
-    // given a hwnd). DOM content can't be pushed across the iframe boundary,
-    // so setContent is intentionally absent.
     getWindow: function () {
       var ulid = currentQuery().get("hwnd");
       if (!ulid) return null;

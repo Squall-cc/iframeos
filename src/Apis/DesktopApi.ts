@@ -9,10 +9,6 @@ import {
 } from "./Shortcuts";
 import { DESKTOP_JSON } from "./system-defaults";
 
-// the desktop is a reflection of the /desktop directory. every shortcut lives
-// there as a real .lnk file; desktop.json is only hidden bookkeeping that
-// stores where each icon sits. app shortcuts are .lnk files too, so dragging
-// something from the start menu creates one just like any other file.
 export interface DesktopAppShortcut {
   file: string;
   app: string;
@@ -31,8 +27,6 @@ export type DesktopShortcut = DesktopAppShortcut | DesktopFileShortcut;
 
 export const DESKTOP_DIR = "/desktop";
 export const DESKTOP_CHANGED_EVENT = "is-desktop-changed";
-// custom mime type used when dragging items out of the file explorer so the
-// desktop (or anything else) can recognize an internal vfs path.
 export const VFS_DRAG_MIME = "application/x-is-vfs-path";
 // custom mime type used when dragging start menu / app icons around.
 export const APP_DRAG_MIME = "application/x-is-app";
@@ -84,8 +78,6 @@ export function displayShortcutName(path: string): string {
   return name || basename(path);
 }
 
-// the bottom edge of the first icon column, used by the down-then-right
-// layout so icons fill a column before spilling into the next one.
 function desktopColumnBottom(): number {
   return Math.max(80, window.innerHeight - 96);
 }
@@ -110,8 +102,6 @@ function findFreeSlot(
   return { x, y };
 }
 
-// reads the stored icon positions (and migrates any legacy app entries that
-// predate .lnk files into real file-based ones).
 export async function readDesktopIcons(): Promise<DesktopShortcut[]> {
   const fs = new FileSystemAccess();
   try {
@@ -208,18 +198,12 @@ export async function updateShortcutPosition(
   await setPosition(target.file, x, y);
 }
 
-// makes sure every file/folder physically in /desktop has an entry (resolving
-// .lnk files into app or file shortcuts) and that the trash is always present.
-// returns the reconciled list.
 export async function syncDesktopFiles(): Promise<DesktopShortcut[]> {
   const fs = new FileSystemAccess();
   const stored = await readDesktopIcons();
   const posByPath = new Map<string, { x: number; y: number }>();
   for (const s of stored) posByPath.set(s.file, { x: s.x, y: s.y });
 
-  // migrate legacy stored app shortcuts (that predate .lnk files) into real
-  // .lnk files sitting on the desktop. emits are suppressed so the migration
-  // can't cascade into re-entrant desktop syncs.
   for (const s of stored) {
     if (isAppShortcut(s) && !fs.exists(s.file)) {
       const dest = await createAppShortcutFile(s.app, s.name, DESKTOP_DIR, {
@@ -275,9 +259,6 @@ export async function syncDesktopFiles(): Promise<DesktopShortcut[]> {
   return out;
 }
 
-// sorts the desktop icons so the trash comes first, then apps, then folders,
-// then files, each in alphabetical order, and lays them out in a grid that
-// fills columns top-to-bottom before moving right.
 export async function arrangeDesktopIcons(): Promise<void> {
   const fs = new FileSystemAccess();
   const icons = await syncDesktopFiles();
@@ -355,8 +336,6 @@ function uniqueDesktopPath(name: string): string {
   return dest;
 }
 
-// moves a file or folder from anywhere in the vfs into the desktop directory
-// and adds a shortcut for it. returns the new path, or null if it couldn't.
 export async function moveToDesktop(src: string): Promise<string | null> {
   const fs = new FileSystemAccess();
   const name = src.split("/").filter(Boolean).pop();
@@ -379,8 +358,6 @@ function normalizeDesktopPath(p: string): string {
   return p.replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();
 }
 
-// copies a host File (from a drag/drop or file picker) into the desktop
-// directory and adds a shortcut. returns the new path.
 export async function copyHostFileToDesktop(file: File): Promise<string> {
   const fs = new FileSystemAccess();
   const name = file.name.replace(/[\\/]/g, "_") || "file";

@@ -18,8 +18,6 @@ const FS_META_KEY = "VFS_METADATA";
 const FS_DB_NAME = "VFS_DATA_DB";
 const FS_DB_STORE = "files";
 
-// fired whenever a higher-level operation moves/creates/deletes vfs entries so
-// open views (desktop, file explorer) can refresh themselves.
 export const VFS_CHANGED_EVENT = "is-vfs-changed";
 
 export function emitVfsChanged(): void {
@@ -176,8 +174,6 @@ class MetadataStore {
 class DataStore {
   private db: IDBDatabase | null = null;
   private ready: Promise<void>;
-  // serializes write/delete operations so that fire-and-forget writers (e.g.
-  // createFile's empty init write) can never land after a later real write.
   private writeChain: Promise<void> = Promise.resolve();
 
   constructor() {
@@ -498,9 +494,6 @@ export class FileSystemAccess {
     }
   };
 
-  // deletes every file and directory (including orphaned entries that are no
-  // longer reachable from "/") except the given default directories, then
-  // recreates those directories. used by the system reset.
   resetToDirectories = (defaultDirs: string[]): void => {
     const keep = new Set<string>(["/"]);
     for (const dir of defaultDirs) {

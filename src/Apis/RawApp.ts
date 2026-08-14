@@ -1,24 +1,3 @@
-// raw (html) apps: plain HTML pages defined in a manifest, installed into the
-// virtual filesystem and launched through the scramjet filesystem transport —
-// the same mechanism the app store used, except served from the VFS instead of
-// fetched from the internet.
-//
-// a raw app manifest lives at /iSi/apps/{key}/manifest.json:
-//   {
-//     "name": "...",
-//     "key": "...",
-//     "version": "1.0.0",
-//     "description": "...",
-//     "type": "raw",
-//     "entryModule": "index.html",   // html file loaded when the app runs
-//     "handlerModule": "handler.html", // html file loaded to open files
-//     "fileassoc": [".test1", ".test2"]
-//   }
-//
-// there are no handler *functions*: entryModule and handlerModule are just html
-// files, and when a file is opened the handler is loaded with the file path
-// passed as ?file=/path/to/file. the app reads it with isapi.getFileArg().
-
 import { spawn, setContent, windowsmap, setWindowIcon } from "../Core/windowhelpers";
 
 import { getAppIconUrl } from "./appIcon";
@@ -48,12 +27,8 @@ export interface RawManifest {
   type?: "raw";
   // html file launched when the app is run (default: index.html)
   entryModule?: string;
-  // html file launched to open files (default: entryModule); the file path is
-  // passed to it as ?file=/path/to/file
   handlerModule?: string;
   fileassoc?: string[];
-  // path to an icon file relative to the app root (optional; defaults to the
-  // system fallback icon)
   icon?: string;
   // whether the app should show up in the start menu (default: true)
   startMenu?: boolean;
@@ -193,10 +168,6 @@ export async function installRawApp(
   return name;
 }
 
-// the directory the manifest.json lives in, as a stripped path prefix ("" when
-// the manifest is at the archive root). packages are often zipped inside a
-// folder named after the app (e.g. rawtest/manifest.json), which would make the
-// declared entryModule/handlerModule paths un-findable after install.
 function manifestWrapperDir(manifestName: string): string {
   const parts = manifestName
     .replace(/^\/+/, "")
@@ -207,10 +178,6 @@ function manifestWrapperDir(manifestName: string): string {
   return parts.join("/");
 }
 
-// installs a raw app from a .zip/.spa package: finds manifest.json (even when
-// the archive wraps everything in a folder), reads every other entry as a text
-// file, strips the wrapper directory so entryModule paths resolve, and installs
-// them into the VFS under /iSi/apps/{key}.
 export async function installRawAppFromZip(
   bytes: ArrayBuffer,
   options?: { fileAssociations?: string[] },

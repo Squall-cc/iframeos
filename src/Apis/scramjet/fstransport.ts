@@ -51,9 +51,6 @@ async function handleFilesystem(
 
   switch (method) {
     case "GET": {
-      // isapi.js is the iSApi bridge raw apps load with
-      // <script src="/iSi/js/isapi.js">. always serve the bundled source (the
-      // vfs copy may be missing or stale), so raw apps get the bridge.
       if (path.toLowerCase() === "/isi/js/isapi.js") {
         return reply(200, isapiJs, "text/javascript");
       }
@@ -78,8 +75,6 @@ async function handleFilesystem(
   }
 }
 
-// runs the decoded code in the top-level (non-sandboxed) page, outside the
-// scramjet iframe, so proxied apps can call back into window.__API etc.
 async function handleEval(encoded: string): Promise<TransferrableResponse> {
   const code = decodeURIComponent(encoded);
   try {
@@ -105,8 +100,6 @@ export async function handle(
   if (route === "eval") {
     return handleEval(rest.join("/"));
   }
-  // root-relative urls (e.g. <script src="/iSi/js/isapi.js">) resolve to the
-  // aspen host with the vfs as the document root
   return handleFilesystem(
     "/" + decodeURIComponent(remote.pathname).replace(/^\/+/, ""),
     method,

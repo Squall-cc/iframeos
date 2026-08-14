@@ -6,16 +6,102 @@
   min-height: 150px;
   min-width: 200px;
   box-sizing: border-box;
+  background: var(--bg, #2d353b);
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+#window.active {
+  border-color: var(--accent, #A7C080);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+}
+
+#window.maximized {
+  border-radius: 0;
+  border-width: 0 0 1px 0;
 }
 
 #window > .title-bar {
   cursor: move; /* dave said tihs or resizehandle curspr had to be changed*/
   z-index: 10;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 4px 0 12px;
+  background: var(--surface, rgba(35, 42, 46, 0.55));
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+}
+
+#window.active > .title-bar {
+  background: var(--surface, rgba(35, 42, 46, 0.55));
+  background: color-mix(in srgb, var(--accent, #A7C080) 28%, var(--surface, rgba(35, 42, 46, 0.55)));
 }
 
 #window.maximized > .title-bar {
   cursor: default;
+}
+
+.title-bar-text {
+  font-family: "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #D3C6AA);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#window.active .title-bar-text {
+  color: var(--accent, #A7C080);
+}
+
+#window:not(.active) .title-bar-text {
+  color: var(--text-muted, #859289);
+}
+
+.title-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.title-bar-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #D3C6AA);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.title-bar-controls button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--accent, #A7C080) 30%, transparent);
+}
+
+.title-bar-controls button:active {
+  background: rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--accent, #A7C080) 45%, transparent);
+}
+
+.title-bar-controls button.close:hover {
+  background: var(--error, #E67E80);
+  color: #fff;
 }
 
 #window .window-body {
@@ -25,6 +111,14 @@
   box-sizing: border-box;
   min-height: 0;
   overflow: hidden;
+  /* apps render their own content colors (most assume a light surface, same
+     as the old 7.css chrome did); only the title bar/border/shadow chrome
+     above is theme-aware material decoration. */
+  background: #f0f0f0;
+}
+
+#window .window-body.has-space {
+  padding: 6px;
 }
 
 #window iframe {
@@ -55,5 +149,5 @@
 }
 
 #window.modal-window {
-  box-shadow: none;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
 }

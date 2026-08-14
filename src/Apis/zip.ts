@@ -1,6 +1,3 @@
-// minimal client-side zip reader for .spa archives
-// relies on the built-in DecompressionStream("deflate-raw"), so it only needs
-// to find entry offsets in the central directory + local headers.
 
 export interface ZipEntry {
   name: string;
@@ -127,8 +124,6 @@ export async function unzip(bytes: ArrayBuffer): Promise<ZipEntry[]> {
   return out;
 }
 
-// finds the manifest.json entry in an archive, preferring the one closest to
-// the root (packages are often zipped inside a folder with the app's name)
 export function findManifestEntry(entries: ZipEntry[]): ZipEntry | undefined {
   let best: { depth: number; entry: ZipEntry } | undefined;
   for (const entry of entries) {

@@ -1,5 +1,3 @@
-// this file is NOT written by me
-// ai slop
 
 import { createReadStream, cpSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -25,8 +23,6 @@ const MIME_TYPES: Record<string, string> = {
 
 const scramjet_dir = path.resolve(import.meta.dirname, "scramjet");
 
-// real scramjet's runtime assets, checked into ./scramjet, served/copied to
-// the fixed paths attachScramjetFrame() expects (see src/Apis/scramjet.ts)
 const SCRAMJET_ASSETS: { url: string; file: string }[] = [
   { url: "/sw.js", file: "sw.js" },
   {

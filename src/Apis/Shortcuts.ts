@@ -1,8 +1,5 @@
 import { FileSystemAccess, emitVfsChanged } from "./FileSystemApi";
 
-// .lnk files are json stubs that point at a vfs path ({"target": "..."}) or an
-// installed app ({"app": "key", "name": "..."}). they let shortcuts exist as
-// ordinary files so they show up in directory listings.
 export const SHORTCUT_EXT = ".lnk";
 export const TRASH_DIR = "/trash";
 
@@ -47,8 +44,6 @@ function uniquePath(fs: FileSystemAccess, desired: string): string {
   return dest;
 }
 
-// creates a .lnk file in `dir` pointing at a vfs path. the file is named after
-// the target (or `name` when given) with the .lnk extension. returns the new path.
 export async function createShortcutFile(
   target: string,
   dir: string,
@@ -108,9 +103,6 @@ export async function readShortcut(path: string): Promise<ShortcutTarget | null>
   return null;
 }
 
-// fully resolves a path through chains of .lnk files, returning the effective
-// target (an installed app, or a vfs path). broken shortcuts still return the
-// path they were supposed to point at so the caller can handle it itself.
 export async function fullyResolveShortcut(path: string): Promise<ShortcutTarget> {
   let current = path;
   const seen = new Set<string>();
@@ -125,9 +117,6 @@ export async function fullyResolveShortcut(path: string): Promise<ShortcutTarget
   return { kind: "file", target: current };
 }
 
-// resolves a .lnk to a plain vfs path (or the app key for app shortcuts),
-// following chains. broken shortcuts return the path they should've resolved
-// to so the caller can deal with the missing target.
 export async function resolveShortcutPath(path: string): Promise<string> {
   const resolved = await fullyResolveShortcut(path);
   return resolved.target;
@@ -163,8 +152,6 @@ async function moveDirectory(
   fs.deleteDirectory(src);
 }
 
-// moves a file or folder into another directory, renaming on collision.
-// returns the new path, or null when the move can't happen.
 export async function movePath(
   src: string,
   destDir: string,
@@ -201,8 +188,6 @@ export async function moveToTrash(src: string): Promise<string | null> {
   return dest;
 }
 
-// permanently deletes everything currently in the trash. returns how many
-// items were removed.
 export function emptyTrash(): number {
   const fs = new FileSystemAccess();
   const children = fs.listDirectory(TRASH_DIR).filter((p) => p !== TRASH_DIR);

@@ -1,7 +1,3 @@
-// manifest.json for a .spa archive (which is just a renamed zip)
-//
-// the manifest is copied into the registry on install; the code files inside
-// the archive are copied into the virtual filesystem.
 export interface SpaManifest {
   name: string;
   key: string;
@@ -17,8 +13,6 @@ export interface SpaManifest {
   fileOpenerModule?: string;
   // file extensions to offer associating with this app on install (e.g. [".txt"])
   fileassoc?: string[];
-  // path to an icon file relative to the app root (optional; defaults to the
-  // system fallback icon)
   icon?: string;
   // whether the app should show up in the start menu (default: true)
   startMenu?: boolean;

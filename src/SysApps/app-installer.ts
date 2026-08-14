@@ -54,8 +54,6 @@ function hasUnsafePaths(entries: ZipEntry[]): boolean {
   });
 }
 
-// parses and validates a package before it can be installed. returns the
-// manifest info plus a list of checks that passed, warnings, and errors.
 async function verifyPackage(bytes: ArrayBuffer): Promise<VerifyResult> {
   const info = await parseSpaArchive(bytes);
   const raw = info.manifest;
@@ -148,8 +146,6 @@ export default function run(hwnd: symbol) {
   startApp(hwnd);
 }
 
-// entry point used when a .spa package in the VFS is opened (double-click in
-// the file explorer): opens the App Manager straight on the verification view.
 export function openFile(hwnd: symbol, filename: string) {
   startApp(hwnd, filename);
 }
@@ -242,9 +238,6 @@ function startApp(hwnd: symbol, initialFile?: string) {
     return [wrap, label, bar];
   }
 
-  // shared confirmation step: show verification results, let the user pick
-  // which file types from the manifest's "fileassoc" list get registered, then
-  // install with a processing progress bar.
   function showConfirmView(
     bytes: ArrayBuffer,
     fileName: string,
@@ -299,9 +292,18 @@ function startApp(hwnd: symbol, initialFile?: string) {
 
         function verifyRow(message: string, iconClass: string, color: string): HTMLDivElement {
           const row = document.createElement("div");
-          row.style.cssText = "color:rgba(0,0,0,0.7);";
-          row.textContent = `  ✓ ${check}`;
-          verifyBox.appendChild(row);
+          row.style.cssText = `color:${color};display:flex;align-items:center;gap:6px;`;
+          const icon = document.createElement("i");
+          icon.className = iconClass;
+          icon.style.cssText = `color:${color};width:12px;flex-shrink:0;`;
+          row.appendChild(icon);
+          const msg = document.createElement("span");
+          msg.textContent = message;
+          row.appendChild(msg);
+          return row;
+        }
+        for (const check of verified.checks) {
+          verifyBox.appendChild(verifyRow(check, "fa-solid fa-check", "#107c10"));
         }
         for (const warn of verified.warnings) {
           verifyBox.appendChild(verifyRow(warn, "fa-solid fa-triangle-exclamation", "#8a6d00"));
@@ -421,9 +423,6 @@ function startApp(hwnd: symbol, initialFile?: string) {
       statusBar.textContent = `${file.name} selected`;
     }
 
-    // tries the File System Access API first (opens a real dialog on modern
-    // Chrome/Edge); falls back to the native file input for browsers where
-    // the modern picker is unavailable or blocked.
     async function pickFromHost() {
       const w = window as Window & {
         showOpenFilePicker?: (options?: unknown) => Promise<Array<{ getFile(): Promise<File> }>>;

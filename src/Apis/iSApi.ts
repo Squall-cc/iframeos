@@ -140,8 +140,6 @@ export interface ShellOpenResult {
 }
 
 export async function shellOpen(filename: string): Promise<ShellOpenResult> {
-  // fully resolve .lnk files first so shortcuts open their real target (or
-  // launch the app an app shortcut points at).
   const resolved = await fullyResolveShortcut(filename);
   if (resolved.kind === "app") {
     const ok = await launchAppEntry(resolved.target, "run");
@@ -187,8 +185,6 @@ export async function shellOpenWithPicker(filename: string): Promise<boolean> {
   return result.handled;
 }
 
-// always shows the "open with" app picker, unlike shellOpenWithPicker which
-// only falls back to it when no association is registered.
 export async function shellOpenWith(filename: string): Promise<boolean> {
   const resolved = await fullyResolveShortcut(filename);
   if (resolved.kind === "app") {
@@ -239,10 +235,6 @@ function openModalWindow<T>(
         closeWindow(hwnd);
       });
     });
-    // the window element only mounts after the store updates, so size it once
-    // the layout has settled. .window-body uses flex-basis 0, which means the
-    // window starts at its minimum size and clips the dialog; grow it to the
-    // dialog's intrinsic size instead.
     sizeModalToContent(hwnd, dialog);
   });
 }
@@ -376,11 +368,6 @@ export interface ShellAskResult {
   values: Record<string, string>;
 }
 
-// like shellModal but with input boxes. every text-entry html input type is
-// supported (text, number, email, password, search, tel, url, date, time,
-// datetime-local, month, week, range, color). the buttons are "ok" or
-// "okcancel" and the result is the button that was clicked plus the values
-// that were entered, as separate fields.
 export function shellAsk(
   fields: ShellAskField[],
   title: string,
@@ -887,8 +874,6 @@ async function openShellPicker(
         }
         fullPath = currentPath === "/" ? "/" + name : currentPath + "/" + name;
       }
-      // selecting a .lnk returns its fully resolved target (or the path it
-      // should've resolved to, so the caller can handle a broken link).
       if (isShortcutFile(fullPath)) {
         const resolved = await fullyResolveShortcut(fullPath);
         fullPath = resolved.target;
@@ -1018,6 +1003,7 @@ export async function launchAppEntry(appKey: string, entryFn: string, filename?:
       draw: () => launchBuiltin("draw", () => import("../SysApps/draw")),
       launch: () => launchBuiltin("launch", () => import("../SysApps/launch")),
       browser: () => launchBuiltin("browser", () => import("../SysApps/browser")),
+      games: () => launchBuiltin("Games", () => import("../SysApps/games")),
       "registry-editor": () => launchBuiltin("Registry Editor", () => import("../SysApps/registry-editor")),
       "app-installer": (f) => {
         if (f) {
@@ -1211,8 +1197,6 @@ export async function getAppInfo(appKey: string): Promise<InstalledAppInfo | nul
   };
 }
 
-// removes an installed app: its file associations, its AppIndex entry, its
-// registry record, and its files under /iSi/apps/{key}
 export async function uninstallApp(appKey: string): Promise<void> {
   const info = await getAppInfo(appKey);
   if (!info) throw new Error(`app "${appKey}" is not installed`);
@@ -1245,10 +1229,6 @@ export async function uninstallApp(appKey: string): Promise<void> {
   }
 }
 
-// registers or unregisters the given extensions for an app. extensions not in
-// the list that were previously registered to this app are unregistered.
-// the manifest's "fileassoc" (the app's declared capabilities) is left
-// untouched so Configure can re-add a removed type later.
 export async function setFileAssociations(appKey: string, extensions: string[]): Promise<void> {
   const info = await getAppInfo(appKey);
   if (!info) throw new Error(`app "${appKey}" is not installed`);

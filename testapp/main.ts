@@ -1,10 +1,3 @@
-// Demo SPA - installed from a .spa (zip) archive.
-//
-// The entry points below are exported functions; the manifest.json declares
-// which ones are the app entry ("run") and the file opener ("openFile").
-//
-// The platform API is injected at runtime: __API, spawn, WindowHandle,
-// shellOpen, shellModal, etc. are in scope, and window.__API is also global.
 
 declare const __API: any;
 

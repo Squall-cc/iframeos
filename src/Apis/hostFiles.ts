@@ -4,11 +4,6 @@ export interface HostFilePickOptions {
   description?: string;
 }
 
-// opens the OS file picker for files on the host machine. prefers the File
-// System Access API (showOpenFilePicker) because a programmatically clicked
-// <input type=file> can silently fail to open a dialog in some Windows /
-// Chromium setups; falls back to the input for browsers without the API.
-// returns the picked files, or null when the user cancels.
 export async function pickHostFiles(
   options?: HostFilePickOptions,
 ): Promise<File[] | null> {

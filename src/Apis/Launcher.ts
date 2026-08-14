@@ -37,6 +37,7 @@ const DEFAULT_BUILTIN_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "draw", name: "draw" },
   { type: "builtin", key: "launch", name: "launch" },
   { type: "builtin", key: "browser", name: "browser" },
+  { type: "builtin", key: "games", name: "Games" },
   { type: "builtin", key: "editor", name: "Text Editor" },
   { type: "builtin", key: "registry-editor", name: "Registry Editor" },
   { type: "builtin", key: "app-installer", name: "App Manager" },
@@ -45,9 +46,6 @@ const DEFAULT_BUILTIN_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "control-panel", name: "Control Panel" },
 ];
 
-// bypasses RegistryKey's fire-and-forget getValue().value (populated async
-// with no way to await it) since the launcher needs a reliable read
-// old registry data can still contain internet-backed appstore entries
 type LegacyLauncherAppEntry =
   | LauncherAppEntry
   | { type: "appstore"; url: string; name: string };

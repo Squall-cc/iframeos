@@ -1,9 +1,3 @@
-// the single source of truth for what a freshly reset system looks like.
-// seedDefaults() is called on every boot so a brand new (or wiped) profile
-// gets the default directories, builtin app manifests, file associations,
-// launcher contents, desktop layout, and theme. resetSystem() wipes the
-// registry + filesystem and then re-seeds everything.
-
 import { FileSystemAccess } from "./FileSystemApi";
 import type { LauncherAppEntry } from "./Launcher";
 import { RegistryInstanceAccess } from "./RegistryApi";
@@ -50,6 +44,7 @@ export const BUILTIN_APPS: BuiltinAppDef[] = [
   { key: "draw", name: "draw", description: "Pointer painting app", icon: "draw.png" },
   { key: "launch", name: "launch", description: "Code runner", startMenu: false },
   { key: "browser", name: "browser", description: "Web browser" },
+  { key: "games", name: "Games", description: "Browse and play games" },
   { key: "editor", name: "Text Editor", description: "Built-in text editor", hasFileOpener: true },
   { key: "registry-editor", name: "Registry Editor", description: "Registry editor" },
   { key: "app-installer", name: "App Manager", description: "Install, configure, and uninstall apps", hasFileOpener: true },
@@ -70,6 +65,7 @@ export const DEFAULT_LAUNCHER_APPS: LauncherAppEntry[] = [
   { type: "builtin", key: "draw", name: "draw" },
   { type: "builtin", key: "launch", name: "launch" },
   { type: "builtin", key: "browser", name: "browser" },
+  { type: "builtin", key: "games", name: "Games" },
   { type: "builtin", key: "editor", name: "Text Editor" },
   { type: "builtin", key: "registry-editor", name: "Registry Editor" },
   { type: "builtin", key: "app-installer", name: "App Manager" },
@@ -90,19 +86,18 @@ export interface DesktopIcon {
   y: number;
 }
 
-// the apps seeded onto a fresh desktop as real .lnk files.
 export const DEFAULT_DESKTOP_APPS: { app: string; name: string }[] = [
   { app: "editor", name: "Text Editor" },
   { app: "file-explorer", name: "File Explorer" },
   { app: "browser", name: "Browser" },
+  { app: "games", name: "Games" },
   { app: "registry-editor", name: "Registry Editor" },
   { app: "app-installer", name: "App Manager" },
   { app: "draw", name: "Draw" },
   { app: "control-panel", name: "Control Panel" },
 ];
 
-// positions for the seeded desktop: one column of app shortcuts going down,
-// with the recycle bin at the bottom of the first column.
+
 export const DEFAULT_DESKTOP_ICONS: DesktopIcon[] = (() => {
   const icons: DesktopIcon[] = [];
   let y = 16;
@@ -164,7 +159,7 @@ function seedDirectories(fs: FileSystemAccess): void {
 }
 
 function seedDesktopFile(fs: FileSystemAccess): void {
-  if (fs.isFile(DESKTOP_JSON)) return;
+  const firstRun = !fs.isFile(DESKTOP_JSON);
   for (const app of DEFAULT_DESKTOP_APPS) {
     const file = `${DESKTOP_PATH}/${app.name}${SHORTCUT_EXT}`;
     if (!fs.isFile(file)) {
@@ -172,14 +167,14 @@ function seedDesktopFile(fs: FileSystemAccess): void {
       fs.openFile(file).write(JSON.stringify({ app: app.app, name: app.name }));
     }
   }
-  fs.createFile(DESKTOP_JSON);
-  fs.openFile(DESKTOP_JSON).write(
-    JSON.stringify({ icons: DEFAULT_DESKTOP_ICONS }, null, 2),
-  );
+  if (firstRun) {
+    fs.createFile(DESKTOP_JSON);
+    fs.openFile(DESKTOP_JSON).write(
+      JSON.stringify({ icons: DEFAULT_DESKTOP_ICONS }, null, 2),
+    );
+  }
 }
 
-// idempotent boot-time seeding: creates default dirs, writes the builtin app
-// manifests, class roots, and first-run registry values.
 export async function seedDefaults(): Promise<void> {
   const reg = new RegistryInstanceAccess();
   const fs = new FileSystemAccess();
@@ -193,9 +188,6 @@ export async function seedDefaults(): Promise<void> {
   await writeAppIndexDefault(reg);
 }
 
-// wipes every registry record and every filesystem entry (except the default
-// directories), re-seeds defaults, and reloads the page so the shell boots
-// into a clean state.
 export async function resetSystem(): Promise<void> {
   const reg = new RegistryInstanceAccess();
   await reg._load("");

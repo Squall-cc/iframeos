@@ -1,0 +1,295 @@
+.games-app {
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  min-height: 0;
+
+  background: var(--bg, #2d353b);
+  color: var(--text, #D3C6AA);
+  font-family: "Segoe UI", sans-serif;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.games-app * {
+  box-sizing: border-box;
+}
+
+.games-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface, rgba(35, 42, 46, 0.55));
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  flex-shrink: 0;
+}
+
+.games-search {
+  flex: 1;
+  min-width: 80px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--text, #D3C6AA);
+  font-size: 12px;
+  outline: none;
+}
+
+.games-search:focus {
+  border-color: var(--accent, #A7C080);
+}
+
+.games-select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--text, #D3C6AA);
+  font-size: 12px;
+}
+
+.games-icon-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--text, #D3C6AA);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.games-icon-btn:hover {
+  background: var(--accent, #A7C080);
+  color: var(--text-on-active, #2d353b);
+}
+
+.games-featured {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+}
+
+.games-featured summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent, #A7C080);
+  list-style: none;
+}
+
+.games-featured summary::-webkit-details-marker {
+  display: none;
+}
+
+.games-featured summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.12s ease;
+}
+
+.games-featured[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.games-grid-summary {
+  flex-shrink: 0;
+  padding: 8px 14px 0;
+  font-size: 11px;
+  color: var(--text-muted, #859289);
+}
+
+
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 10px 14px 14px;
+
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+
+  align-content: start;
+}
+.games-grid-featured {
+  padding: 0 14px 12px;
+  overflow: visible;
+  flex: none;
+}
+
+.games-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  background: var(--surface, rgba(35, 42, 46, 0.5));
+  backdrop-filter: blur(6px);
+  padding: 0;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.games-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent, #A7C080);
+}
+
+.games-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.games-card-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.8));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.games-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deeper, #1c2226);
+  z-index: 5;
+}
+
+.games-viewer[hidden] {
+  display: none;
+}
+
+.games-viewer-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface, rgba(35, 42, 46, 0.6));
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  flex-shrink: 0;
+}
+
+.games-viewer-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.games-viewer-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #D3C6AA);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.games-viewer-author {
+  font-size: 10px;
+  color: var(--text-muted, #859289);
+}
+
+.games-viewer-frame-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.games-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #000;
+}
+
+.games-popup-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.games-popup-overlay[hidden] {
+  display: none;
+}
+
+.games-popup {
+  width: min(380px, 90%);
+  max-height: 80%;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--surface, rgba(35, 42, 46, 0.92));
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  color: var(--text, #D3C6AA);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.games-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.games-popup-body {
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.games-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-glass, rgba(167, 192, 128, 0.35));
+  background: var(--accent, #A7C080);
+  color: var(--text-on-active, #2d353b);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.games-btn:hover {
+  background: var(--accent-hover, #B5CC95);
+}

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { libcurl } from "libcurl.js/bundled";
 // this file is ai-generated + stolen from te repo. idk how 2 use libcurl fetch for allat
 let session: any;

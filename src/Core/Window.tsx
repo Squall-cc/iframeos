@@ -1,5 +1,6 @@
+import "@fortawesome/fontawesome-free/css/fontawesome.min.css";
+import "@fortawesome/fontawesome-free/css/solid.min.css";
 import "./Window.css";
-import "7.css/dist/gui/window.css";
 import type { ParentComponent } from "solid-js";
 import { createEffect, onMount } from "solid-js";
 
@@ -41,7 +42,6 @@ const Window: ParentComponent<WindowProps> = (props) => {
   let offsetX = 0;
   let offsetY = 0;
   let isMaxDrag = false;
-  // @ts-ignore
   let windowthingy!: HTMLDivElement; // eslint-disable-line no-unassigned-vars
 
   onMount(() => {
@@ -169,7 +169,7 @@ const Window: ParentComponent<WindowProps> = (props) => {
     <>
       <div
         id="window"
-        class="window glass active"
+        class="window active"
         classList={{ "modal-window": !!props.modal, minimized: !!props.minimized }}
         ref={windowthingy}
         style={{
@@ -188,24 +188,30 @@ const Window: ParentComponent<WindowProps> = (props) => {
           <div class="title-bar-text">{props.title}</div>
           <div id="windowcontrols" class="title-bar-controls">
             {props.modal ? (
-              <button
-                aria-label="Close"
-                onClick={() => props.onclose?.()}
-              ></button>
+              <button class="close" aria-label="Close" onClick={() => props.onclose?.()}>
+                <i class="fa-solid fa-xmark" />
+              </button>
             ) : (
               <>
                 <button
                   aria-label="Minimize"
                   onClick={() => props.onminimize?.()}
-                ></button>
+                >
+                  <i class="fa-solid fa-window-minimize" />
+                </button>
                 <button
                   aria-label={props.maximized ? "Restore" : "Maximize"}
                   onClick={() => props.onmaximize?.()}
-                ></button>
+                >
+                  <i class={props.maximized ? "fa-solid fa-window-restore" : "fa-solid fa-window-maximize"} />
+                </button>
                 <button
+                  class="close"
                   aria-label="Close"
                   onClick={() => props.onclose?.()}
-                ></button>
+                >
+                  <i class="fa-solid fa-xmark" />
+                </button>
               </>
             )}
           </div>

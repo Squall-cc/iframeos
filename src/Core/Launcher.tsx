@@ -14,6 +14,7 @@ import controlPanel from "../SysApps/control-panel";
 import draw from "../SysApps/draw";
 import editor from "../SysApps/editor";
 import fileExplorer from "../SysApps/file-explorer";
+import games from "../SysApps/games";
 import hello from "../SysApps/hello";
 import hi from "../SysApps/hi";
 import launch from "../SysApps/launch";
@@ -34,6 +35,7 @@ const builtinApps = new Map([
   ["file-explorer", fileExplorer],
   ["test-app", testApp],
   ["control-panel", controlPanel],
+  ["games", games],
 ]);
 
 interface LauncherItem {

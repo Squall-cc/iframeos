@@ -70,8 +70,6 @@ export async function setCurrentWallpaper(id: string): Promise<void> {
   await applyWallpaperById(id);
 }
 
-// wallpapers stored in the vfs (user uploads). returns a stable "id" that is
-// just the vfs path, plus a blob url for previews.
 export async function getVfsWallpapers(): Promise<WallpaperInfo[]> {
   const fs = new FileSystemAccess();
   if (!fs.exists(WALLPAPERS_DIR)) return [];

@@ -1,4 +1,3 @@
-//@ts-nocheck
 import { libcurl } from "libcurl.js/bundled";
 
 export function setWallpaper(url: string) {

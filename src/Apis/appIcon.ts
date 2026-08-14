@@ -11,9 +11,6 @@ const iconCache = new Map<string, string>();
 
 const APP_MANIFEST_PREFIX = "InternalSystem/Apps";
 
-// every image/icon shipped in the assets directory, keyed by lowercase
-// filename. builtin apps can reference an icon by bare filename (e.g.
-// "paint.ico") and it will resolve here instead of the vfs.
 const assetIcons: Record<string, string> = {};
 const assetGlob = import.meta.glob(
   "/src/Assets/**/*.{ico,png,jpg,jpeg,gif,webp,svg,bmp}",
@@ -24,13 +21,6 @@ for (const [path, url] of Object.entries(assetGlob)) {
   if (base && !(base in assetIcons)) assetIcons[base] = url as string;
 }
 
-// resolves the display URL for an app's icon.
-//  - a bare filename (no "/") resolves from the assets directory first, then
-//    from the app's folder in the vfs
-//  - a relative path resolves from /iSi/apps/{key}/{path} in the vfs
-//  - when no path is given, the app's registered manifest is consulted for an
-//    "icon" value
-// falls back to the system default icon.
 export async function getAppIconUrl(
   appKey: string,
   iconPath?: string | null,
@@ -65,9 +55,6 @@ export async function getAppIconUrl(
   return cached ?? DEFAULT_APP_ICON;
 }
 
-// resolves the icon for a file by its extension's registered app, if any.
-// used by shortcuts so a .lnk to a file shows the icon of the app that opens
-// it instead of a generic link.
 export async function getFileTypeIconUrl(
   filePath: string,
 ): Promise<string | undefined> {

@@ -424,8 +424,6 @@ function shortcutDisplayName(shortcut: DesktopShortcut): string {
 function showShortcutMenu(x: number, y: number, shortcut: DesktopShortcut) {
   const fs = new FileSystemAccess();
   const isTrash = isFileShortcut(shortcut) && shortcut.file === TRASH_DIR;
-  // .lnk files (and real folders) don't get "Open With" - shortcuts resolve
-  // to their target instead.
   const isLink = isFileShortcut(shortcut) && isShortcutFile(shortcut.file);
   const isRealFolder = isFileShortcut(shortcut) && fs.isDirectory(shortcut.file);
   const canOpenWith = isFileShortcut(shortcut) && !isLink && !isRealFolder;
@@ -519,8 +517,6 @@ async function duplicateShortcut(shortcut: DesktopShortcut) {
     });
     return;
   }
-  // shortcuts duplicate to their target so "Create Shortcut" on a .lnk keeps
-  // pointing at the same file/folder.
   if (isShortcutFile(shortcut.file)) {
     const resolved = await resolveShortcut(shortcut.file);
     if (resolved.kind === "app") {
