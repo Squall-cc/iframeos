@@ -2,7 +2,7 @@
 // NOT allegro, allegro is not releasing for a while
 
 
-// WebRTC cloud-streaming client. Talks to /api/cloud/embed-data for session
+// WebRTC cloud-streaming client. Talks to /cloud/v1/embed-data for session
 // info, negotiates over a JSON signaling websocket, and streams input back
 // over an unreliable data channel using a fixed binary layout. See cloud.txt
 // at the repo root for the wire format this replicates.
@@ -30,18 +30,126 @@ function clamp(n: number, min: number, max: number): number {
 export async function fetchEmbedData(id: string, host?: string): Promise<EmbedData> {
   const params = new URLSearchParams({ id });
   if (host) params.set("host", host);
-  const res = await fetch(`/api/cloud/embed-data?${params.toString()}`);
-  if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const body = await res.json();
-      if (body?.error) message = String(body.error);
-    } catch {
-      // non-JSON error body, keep the generic message
-    }
-    throw new Error(message);
-  }
+  const res = await fetch(`/cloud/v1/embed-data?${params.toString()}`);
+  if (!res.ok) throw new Error(await readError(res));
   return res.json();
+}
+
+interface CreateSessionEvent {
+  status: string;
+  uuid?: string;
+  queue_pos?: number;
+  error?: string;
+}
+
+async function readError(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    if (body?.error) return String(body.error);
+  } catch {
+    // non-JSON error body, keep the generic message
+  }
+  return `Request failed (${res.status})`;
+}
+
+// POST /cloud/v1/createSession streams newline-delimited JSON progress
+// events and closes once the session either lands in a queue or is ready to
+// start — it does not wait out the queue itself, that's polled separately.
+async function createCloudSession(
+  gameKey: string,
+  onProgress: (event: CreateSessionEvent) => void,
+): Promise<{ uuid: string; queued: boolean }> {
+  const res = await fetch("/cloud/v1/createSession", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ game_key: gameKey }),
+  });
+  if (!res.ok || !res.body) throw new Error(await readError(res));
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let uuid: string | undefined;
+  let queued = false;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line) continue;
+      const event = JSON.parse(line) as CreateSessionEvent;
+      onProgress(event);
+      if (event.status === "error") throw new Error(event.error ?? "Session creation failed");
+      if (event.uuid) uuid = event.uuid;
+      if (event.status === "queue") queued = true;
+    }
+  }
+  if (!uuid) throw new Error("Session creation ended without a session id");
+  return { uuid, queued };
+}
+
+// GET /cloud/v1/getQueue — poll at most once every 3s per the server's rate limit.
+async function pollQueue(uuid: string): Promise<number | "finished_queue"> {
+  const res = await fetch(`/cloud/v1/getQueue?${new URLSearchParams({ uuid })}`);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body?.error ? String(body.error) : `Request failed (${res.status})`);
+  return body.status === "finished_queue" ? "finished_queue" : (body.queue_pos ?? 0);
+}
+
+// POST /cloud/v1/startGame — must be called within 30s of the session
+// reaching "finished_queue", returns the same ice_servers/signaling_ws shape
+// embed-data does.
+async function startGame(uuid: string): Promise<EmbedData> {
+  const res = await fetch("/cloud/v1/startGame", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuid }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body?.error ? String(body.error) : `Request failed (${res.status})`);
+  return { ice_servers: body.ice_servers, signaling_ws: body.signaling_ws };
+}
+
+function describeEvent(event: CreateSessionEvent): string {
+  switch (event.status) {
+    case "creating_account":
+      return "Creating account...";
+    case "account_ready":
+      return "Account ready...";
+    case "requesting_game":
+      return "Requesting game...";
+    case "queue":
+      return `Queued (position ${event.queue_pos ?? "?"})...`;
+    case "finished_queue":
+      return "Starting...";
+    default:
+      return event.status;
+  }
+}
+
+// full flow for turning a catalog game_key into a live, connectable session:
+// createSession -> (poll getQueue if queued) -> startGame.
+export async function launchGameSession(
+  gameKey: string,
+  onProgress: (message: string) => void,
+): Promise<EmbedData> {
+  const { uuid, queued } = await createCloudSession(gameKey, (event) => onProgress(describeEvent(event)));
+
+  if (queued) {
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 3500));
+      const pos = await pollQueue(uuid);
+      if (pos === "finished_queue") break;
+      onProgress(`Queued (position ${pos})...`);
+    }
+  }
+
+  onProgress("Starting...");
+  return startGame(uuid);
 }
 
 function normalizeCandidate(raw: unknown): RTCIceCandidateInit | undefined {
@@ -98,6 +206,14 @@ export class CloudSession {
     } catch (e) {
       if (!this.destroyed) this.onStatus("ended", (e as Error).message);
     }
+  }
+
+  // for callers that already have ice_servers/signaling_ws from a session
+  // they created themselves (e.g. via launchGameSession below), skipping
+  // the embed-data lookup for an already-active session.
+  connectWithEmbedData(embed: EmbedData): void {
+    this.onStatus("connecting");
+    this.startSignaling(embed);
   }
 
   destroy(): void {
