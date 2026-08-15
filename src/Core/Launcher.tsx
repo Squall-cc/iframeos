@@ -10,6 +10,7 @@ import * as launcherApi from "../Apis/Launcher";
 import type { LauncherAppEntry } from "../Apis/Launcher";
 import appInstaller from "../SysApps/app-installer";
 import browser from "../SysApps/browser";
+import cloud from "../SysApps/cloud";
 import controlPanel from "../SysApps/control-panel";
 import draw from "../SysApps/draw";
 import editor from "../SysApps/editor";
@@ -36,6 +37,7 @@ const builtinApps = new Map([
   ["test-app", testApp],
   ["control-panel", controlPanel],
   ["games", games],
+  ["cloud", cloud],
 ]);
 
 interface LauncherItem {

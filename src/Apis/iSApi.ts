@@ -1004,6 +1004,7 @@ export async function launchAppEntry(appKey: string, entryFn: string, filename?:
       launch: () => launchBuiltin("launch", () => import("../SysApps/launch")),
       browser: () => launchBuiltin("browser", () => import("../SysApps/browser")),
       games: () => launchBuiltin("Games", () => import("../SysApps/games")),
+      cloud: () => launchBuiltin("Cloud Gaming", () => import("../SysApps/cloud")),
       "registry-editor": () => launchBuiltin("Registry Editor", () => import("../SysApps/registry-editor")),
       "app-installer": (f) => {
         if (f) {
