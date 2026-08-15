@@ -184,11 +184,14 @@ export class Resizable {
       let clampedW: number, clampedH: number;
 
       switch (location) {
-        case "top":
+        case "top": {
           clampedH = Math.max(minH, initialHeight - deltaY);
-          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          const top = Math.max(0, initialTop + initialHeight - clampedH);
+          clampedH = initialTop + initialHeight - top;
+          el.style.top = top + "px";
           el.style.height = clampedH + "px";
           break;
+        }
         case "left":
           clampedW = Math.max(minW, initialWidth - deltaX);
           el.style.left = (initialLeft + initialWidth - clampedW) + "px";
@@ -202,21 +205,27 @@ export class Resizable {
           clampedH = Math.max(minH, initialHeight + deltaY);
           el.style.height = clampedH + "px";
           break;
-        case "topLeft":
+        case "topLeft": {
           clampedW = Math.max(minW, initialWidth - deltaX);
           clampedH = Math.max(minH, initialHeight - deltaY);
+          const top = Math.max(0, initialTop + initialHeight - clampedH);
+          clampedH = initialTop + initialHeight - top;
           el.style.left = (initialLeft + initialWidth - clampedW) + "px";
-          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          el.style.top = top + "px";
           el.style.width = clampedW + "px";
           el.style.height = clampedH + "px";
           break;
-        case "topRight":
+        }
+        case "topRight": {
           clampedW = Math.max(minW, initialWidth + deltaX);
           clampedH = Math.max(minH, initialHeight - deltaY);
-          el.style.top = (initialTop + initialHeight - clampedH) + "px";
+          const top = Math.max(0, initialTop + initialHeight - clampedH);
+          clampedH = initialTop + initialHeight - top;
+          el.style.top = top + "px";
           el.style.width = clampedW + "px";
           el.style.height = clampedH + "px";
           break;
+        }
         case "bottomLeft":
           clampedW = Math.max(minW, initialWidth - deltaX);
           clampedH = Math.max(minH, initialHeight + deltaY);

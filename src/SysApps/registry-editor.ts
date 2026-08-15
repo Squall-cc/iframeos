@@ -224,19 +224,17 @@ export default function run(hwnd: symbol) {
         row.style.background = "rgba(0,100,200,0.25)";
       }
 
-      const toggle = document.createElement("span");
+      const toggle = document.createElement("i");
       toggle.style.cssText =
-        "display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;font-size:8px;user-select:none;flex-shrink:0;";
+        "display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;font-size:10px;user-select:none;flex-shrink:0;";
       if (node.children.length > 0) {
-        toggle.textContent = node.expanded ? "▼" : "▶";
+        toggle.className = node.expanded ? "fa-solid fa-caret-down" : "fa-solid fa-caret-right";
         toggle.style.cursor = "pointer";
         toggle.addEventListener("click", (e) => {
           e.stopPropagation();
           node.expanded = !node.expanded;
           refreshTreeKeepingState();
         });
-      } else {
-        toggle.textContent = "  ";
       }
       row.appendChild(toggle);
 
