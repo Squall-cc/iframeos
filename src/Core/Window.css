@@ -15,8 +15,8 @@
 }
 
 #window.active {
-  border-color: var(--accent, #A7C080);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+  border-color: color-mix(in srgb, var(--accent, #A7C080) 45%, var(--border-glass, rgba(167, 192, 128, 0.35)));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
 }
 
 #window.maximized {
@@ -41,7 +41,7 @@
 
 #window.active > .title-bar {
   background: var(--surface, rgba(35, 42, 46, 0.55));
-  background: color-mix(in srgb, var(--accent, #A7C080) 28%, var(--surface, rgba(35, 42, 46, 0.55)));
+  background: color-mix(in srgb, var(--accent, #A7C080) 12%, var(--surface, rgba(35, 42, 46, 0.55)));
 }
 
 #window.maximized > .title-bar {
@@ -59,7 +59,7 @@
 }
 
 #window.active .title-bar-text {
-  color: var(--accent, #A7C080);
+  color: color-mix(in srgb, var(--accent, #A7C080) 65%, var(--text, #D3C6AA));
 }
 
 #window:not(.active) .title-bar-text {

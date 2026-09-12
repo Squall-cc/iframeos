@@ -103,9 +103,9 @@ export default function run(hwnd: symbol) {
     preview.style.cssText = "width:100%;height:52px;background-size:cover;background-position:center;border-radius:2px;background-color:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;";
     if (w.vanta) {
       preview.style.background = "linear-gradient(135deg, #008542, #89ab0e)";
-      const icon = document.createElement("i");
-      icon.className = "fa-solid fa-wave-square";
-      icon.style.cssText = "color:rgba(255,255,255,0.85);font-size:18px;";
+      const icon = document.createElement("span");
+      icon.textContent = "v";
+      icon.style.cssText = "color:#000;font-family:sans-serif;font-size:20px;line-height:1;";
       preview.appendChild(icon);
     } else if (w.url) {
       preview.style.backgroundImage = `url("${w.url}")`;
