@@ -113,9 +113,18 @@
 
 
 
+/* flexbox + wrap instead of CSS grid: grid's implicit "auto" row-track
+   sizing has to measure each item's content-based height before it can lay
+   rows out, and a lazy-loaded <img> (empty until it scrolls into view)
+   measures as ~0px tall - collapsing every row to a couple of pixels while
+   the cards themselves still paint at full (aspect-ratio-derived) height,
+   so every row overlaps the next. flex-wrap's line height is just the max
+   of each item's already-resolved size, so there's no such measure-before-
+   layout step to get wrong. */
 .games-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 10px;
   padding: 10px 14px 14px;
 
@@ -124,17 +133,30 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-
-  align-content: start;
 }
+/* a horizontal filmstrip, capped and independently scrollable, so however
+   many zones the catalog flags "featured" can never grow this section tall
+   enough to push the real .games-grid below out of the window entirely
+   (which - combined with .games-app's overflow:hidden - left no way to
+   scroll to it at all). */
 .games-grid-featured {
+  flex-wrap: nowrap;
+  align-content: stretch;
   padding: 0 14px 12px;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
   flex: none;
+}
+
+.games-grid-featured .games-card {
+  flex: 0 0 130px;
+  max-width: 130px;
 }
 
 .games-card {
   position: relative;
+  flex: 1 1 130px;
+  max-width: 200px;
   aspect-ratio: 3 / 4;
   border-radius: 10px;
   overflow: hidden;
@@ -152,6 +174,8 @@
 }
 
 .games-card img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
