@@ -94,7 +94,16 @@ export default function run(id: symbol) {
       const idx = href.indexOf(pref);
       if (idx === -1) return;
 
-      const url = decodeURIComponent(href.slice(idx + pref.length));
+      //url fixer (w gemini for regex)
+      let rest = href.slice(idx + pref.length).replace(/^([^/]+\/)+(?=https?:)/, "");
+      rest = rest.replace(/[?&]?\$rfp=.*$/, "");
+
+      let url: string;
+      try {
+        url = decodeURIComponent(rest);
+      } catch {
+        url = rest;
+      }
       urlInput.value = url;
 
       if (url !== lastUrl) {
